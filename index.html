@@ -92,19 +92,24 @@ permissions and limitations under the License.
                         <!-- Panel release notes above S3 object table -->
                         <div class="panel-body">
                             <h1>USDOT ITS WorkZone Sandbox</h1>
-                            <p>This S3 bucket contains semi-processed raw data from selected WorkZone Data Exchange (WZDx) feeds.</p><p></p>
-                            <p>The data is currently stored in the following folder hierarchy:</p>
+                            <p>This S3 bucket contains semi-processed raw data from selected WorkZone Data Exchange (WZDx) feeds.</p>
+                            <p>The data is currently stored using the following naming structure:</p>
 
-                            <p><code>state={state}/feedName={feedName}/year={year}/month={month}/</code></p>
+                            <p><code>state={state}/feedName={feedName}/year={year}/month={month}/{identifier}_{beginLocation_roadDirection}_{year}{month}_v{version}.txt</code></p>
                             <ul>
-                              <li><code>{state}</code>: US state where the WZDx feed is from. E.g., the WZDx feed provided by Maricopa County in Arizona will have a state value of <code>arizona</code>. Based on the metadata of the feed in the <a href="https://datahub.transportation.gov/d/69qe-yiui" target="_blank" rel="noopener noreferrer">WZDx Feed Registry</a></li>
-                              <li><code>{feedName}</code>: Name of the feed as designated by ITS DataHub when we register the feed. E.g., the WZDx feed provided by Maricopa County has a <code>feedName</code> value of <code>mcdot</code>. Based on the metadata of the feed in the <a href="https://datahub.transportation.gov/d/69qe-yiui" target="_blank" rel="noopener noreferrer">WZDx Feed Registry</a></li>
-                              <li><code>{year}</code>: Four-digit year value based on the <code>timeStampUpdate</code> field in the feed's header at time of ingestion. Based on local time at work zone location. E.g., <code>2019</code>.</li>
-                              <li><code>{month}</code>: Two-digit month value based on the <code>timeStampUpdate</code> field in the feed's header at time of ingestion. Based on local time at work zone location. E.g., <code>01</code> for January, <code>10</code> for October.</li>
+                              <li><code>{state}</code>: The US state where the WZDx feed is from (e.g., <code>arizona</code>). Based on the metadata of the feed in the <a href="https://datahub.transportation.gov/d/69qe-yiui" target="_blank" rel="noopener noreferrer">WZDx Feed Registry</a></li>
+                              <li><code>{feedName}</code>: Name of the feed as designated by ITS DataHub when the feed is added to the registry (e.g., <code>mcdot</code>). Based on the metadata of the feed in the <a href="https://datahub.transportation.gov/d/69qe-yiui" target="_blank" rel="noopener noreferrer">WZDx Feed Registry</a></li>
+                              <li><code>{year}</code>: Four-digit year value based on the <code>timeStampUpdate</code> field in the feed's header at time of ingestion (e.g., <code>2019</code>). Based on local time at work zone location.</li>
+                              <li><code>{month}</code>: Two-digit month value based on the <code>timeStampUpdate</code> field in the feed's header at time of ingestion (e.g., <code>01</code>). Based on local time at work zone location.</li>
+                              <li><code>{identifier}</code>: Identifier of a work zone, based on the <code>identifier</code> field in the WZDx Common Core Data (e.g. <code>az511.gov.11122</code>).</li>
+                              <li><code>{beginLocation_roadDirection}</code>: The designated direction of the road that is the start of the work zone activity (e.g., <code>westbound</code>). Based on the <code>roadDirection</code> field of the <code>BeginLocation</code> data frame.</li>
+                              <li><code>{version}</code>: The WZDx version number that was used to create the file (e.g., <code>1</code>). Based on the metadata of the feed in the <a href="https://datahub.transportation.gov/d/69qe-yiui" target="_blank" rel="noopener noreferrer">WZDx Feed Registry</a>.</li>
                             </ul>
 
+                            
+
                             <p>For more information on the WorkZone Data Exchange Specifications, please consult the documentation at our <a href="https://github.com/usdot-jpo-ode/jpo-wzdx" target="_blank" rel="noopener noreferrer">WZDx GitHub repository</a></p>
-                            <p>For more information on how to access the data via AWS CLI, please consult our <a href="https://github.com/usdot-its-jpo-data-portal/sandbox#accessing-cv-pilots-data-from-a-public-amazon-s3-bucket">ITS Sandbox README</a>.</p><p></p></p>
+                            <p>For more information on how to programatically access the data, please consult our <a href="https://github.com/usdot-its-jpo-data-portal/sandbox#accessing-cv-pilots-data-from-a-public-amazon-s3-bucket" target="_blank" rel="noopener noreferrer">ITS Sandbox README</a>.</p></p>
 
                             <p>If you'd like to get more involved with the WZDx or know of a WZDx feed that is not currently in our registry, please contact us at <a href="mailto:data.itsjpo@dot.gov">data.itsjpo@dot.gov</a>. We'd love to hear from you!</p>
 
