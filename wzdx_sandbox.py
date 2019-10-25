@@ -32,15 +32,14 @@ class WorkZoneSandbox(object):
 
     def cmp_status(self, cur_status, prev_status, prev_prev_status):
         ignore_keys = ['timestampEventUpdate']
-        if prev_prev_status:
-            # consider status as new if last record was at least one day ago
-            time_diff = dateutil.parser.parse(cur_status['timestampEventUpdate']) - dateutil.parser.parse(prev_prev_status['timestampEventUpdate'])
-            if time_diff >= timedelta(days=1):
-                return False
+        # consider status as new if last record was at least one day ago
+        time_diff = dateutil.parser.parse(cur_status['Header']['timeStampUpdate']) - dateutil.parser.parse(prev_prev_status['Header']['timeStampUpdate'])
+        if time_diff >= timedelta(days=1):
+            return False
 
         # if last record is more recent, consider status as new only if any non-ignored field is different
-        cur_status = {k:v for k,v in cur_status.items() if k not in ignore_keys}
-        prev_status = {k:v for k,v in prev_status.items() if k not in ignore_keys}
+        cur_status = {k:v for k,v in cur_status['WorkZoneActivity'][0].items() if k not in ignore_keys}
+        prev_status = {k:v for k,v in prev_status['WorkZoneActivity'][0].items() if k not in ignore_keys}
         return cur_status == prev_status
 
     def update_from_feed(self):
@@ -58,6 +57,7 @@ class WorkZoneSandbox(object):
             key = prefix+fp
             out_rec = {'Header': wzdx['Header'], 'WorkZoneActivity': [current_status]}
             if self.s3helper.path_exists(self.bucket, key):
+                # if not first status for the workzone for the month
                 datastream = self.s3helper.get_data_stream(self.bucket, key)
                 recs = [rec for rec in self.s3helper.newline_json_rec_generator(datastream)]
                 if out_rec == recs[-1]:
@@ -66,26 +66,24 @@ class WorkZoneSandbox(object):
                     self.n_skipped += 1
                     continue
 
-                prev_status = recs[-1]['WorkZoneActivity'][0]
-                prev_prev_status = None
-                if len(recs) > 1:
-                    prev_prev_status = recs[-2]['WorkZoneActivity'][0]
-
                 if len(recs) == 1:
+                    # if only one record so far, automatically archive first record and save current record
                     out_recs = recs + [out_rec]
                     self.n_new_status += 1
                     print('Only 1 rec and not the same')
-                elif self.cmp_status(current_status, prev_status, prev_prev_status):
-                    out_recs = recs[:-1] + [out_rec]
-                    self.n_overwrite += 1
                 else:
-                    out_recs = recs + [out_rec]
-                    self.n_new_status += 1
+                    # if more than one record, compare current record with previous and previous previous record
+                    if self.cmp_status(out_rec, recs[-1], recs[-2]):
+                        out_recs = recs[:-1] + [out_rec]
+                        self.n_overwrite += 1
+                    else:
+                        out_recs = recs + [out_rec]
+                        self.n_new_status += 1
             else:
                 out_recs = [out_rec]
                 self.n_new_fps += 1
 
             self.s3helper.write_recs(out_recs, self.bucket, key)
 
-        self.print_func('{} status found in {} feed: {} skipped, {} updates, {} overwrites, {} new files'.format(
-        len(new_statuses), self.feed['feedName'], self.n_skipped, self.n_new_status, self.n_overwrite, self.n_new_fps))
+        self.print_func('{} status found in {} feed: {} skipped, {} overwrites, {} updates, {} new files'.format(
+        len(new_statuses), self.feed['feedName'], self.n_skipped, self.n_overwrite, self.n_new_status, self.n_new_fps))
