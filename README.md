@@ -1,5 +1,6 @@
 # wzdx_sandbox
-Code for ingesting WZDx feed data into ITS DataHub's ITS Sandbox. For more information on ITS Sandbox data, please refer to the [ITS Sandbox README page](https://github.com/usdot-its-jpo-data-portal/sandbox).
+
+Code for ingesting WZDx feed data into ITS DataHub's ITS Work Zone Sandbox, as well as landing page for the ITS Work Zone Sandbox S3 explorer site. For more information on ITS Sandbox data, please refer to the [ITS Sandbox README page](https://github.com/usdot-its-jpo-data-portal/sandbox).
 
 ## Getting Started
 
@@ -60,10 +61,33 @@ TODO: Add section on coding style tests, what they do, and why
 		- `FEED` - stringified json object containing information about the WZDx feed to ingest. At a minimum, this should include `state`, `feedName`, and `url`.
 		 	- default set as: {"state": "arizona", "feedName": "mcdot", "url": "http://api.mcdot-its.com/WZDx/Activity/Get"}
   - In "Basics settings" section, set adequate Memory and Timeout values. Memory of 1664 MB and Timeout value of 10 minutes should be plenty.
+4. Make sure to save all of your changes.
 
+### Deployment of S3 Explorer site
 
+1. Upload `index.html` to the root folder of your S3 bucket.
+2. In the AWS Console for your S3 bucket, go to "Permissions" > "CORS configuration" and copy and paste the following block of text and replace `{YOUR_WORKZONE_BUCKET_NAME}` with your bucket name.
 
-3. Upload the `wzdx_ingest.zip` file and save.
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+<CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedOrigin>http://{YOUR_WORKZONE_BUCKET_NAME}.s3.amazonaws.com</AllowedOrigin>
+    <AllowedOrigin>https://s3.amazonaws.com</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <MaxAgeSeconds>3000</MaxAgeSeconds>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-amz-meta-custom-header</ExposeHeader>
+    <AllowedHeader>Authorization</AllowedHeader>
+    <AllowedHeader>*</AllowedHeader>
+</CORSRule>
+</CORSConfiguration>
+```
+
+3. Save. Also make sure that your bucket policy allows for List/Get actions on resource `arn:aws:s3:::{YOUR_WORKZONE_BUCKET_NAME}/*` and `arn:aws:s3:::{YOUR_WORKZONE_BUCKET_NAME}`.
+
 
 ## Built With
 
