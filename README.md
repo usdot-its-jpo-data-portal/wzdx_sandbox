@@ -35,13 +35,13 @@ If you plan to deploy the script on your local machine, you need the following:
 2. Navigate into the repository folder by entering `cd wzdx_sandbox` in command line.
 3. Install the required packages by running `pip install -r requirements.txt`.
 
-TODO: Add demo example
+- `TODO: Add demo example`
 
 ## Running the tests
 
-TODO: Add section on how to run the automated tests for this system
-TODO: Add section explaining what the end-to-end tests test and why
-TODO: Add section on coding style tests, what they do, and why
+- `TODO: Add section on how to run the automated tests for this system`
+- `TODO: Add section explaining what the end-to-end tests test and why`
+- `TODO: Add section on coding style tests, what they do, and why`
 
 ## Deployment
 
