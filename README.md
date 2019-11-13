@@ -56,10 +56,10 @@ If you plan to deploy the script on your local machine, you need the following:
 	  - Set CloudWatch to trigger at your desired ingestion frequency. Once every 15 minutes is the highest frequency you should set for work zone status ingestion.
 	- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest.zip` file as your "Function Package."
 	- In "Environment variables" section, set the following:
-	  - `BUCKET` - the destination s3 bucket where the WZDx feed should be archived to.
+	  - `BUCKET`: the destination s3 bucket where the WZDx feed should be archived to.
 			- default set as: usdot-its-workzone-public-data
 		- `FEED` - stringified json object containing information about the WZDx feed to ingest. At a minimum, this should include `state`, `feedName`, and `url`.
-		 	- default set as: {"state": "arizona", "feedName": "mcdot", "url": "http://api.mcdot-its.com/WZDx/Activity/Get"}
+			- default set as: {"state": "arizona", "feedName": "mcdot", "url": "http://api.mcdot-its.com/WZDx/Activity/Get"}
   - In "Basics settings" section, set adequate Memory and Timeout values. Memory of 1664 MB and Timeout value of 10 minutes should be plenty.
 4. Make sure to save all of your changes.
 
