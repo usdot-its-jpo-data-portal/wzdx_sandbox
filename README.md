@@ -105,17 +105,9 @@ If you plan to deploy the script on your local machine, you need the following:
 
 Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for general good practices on code of conduct, and the process for submitting pull requests.
 
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
-
-## Authors
-
-See the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
-
 ## License
 
-This project is licensed under the Apache 2.0 License. - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Apache 2.0 License. - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
