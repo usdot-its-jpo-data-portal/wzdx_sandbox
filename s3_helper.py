@@ -26,6 +26,8 @@ class S3Helper(object):
             exit()
         except:
             self.print_func(traceback.format_exc())
+            self.print_func('Exiting. Unable to establish AWS session with the following profile name: {}'.format(self.aws_profile))
+            exit()
         return session
 
     def _get_client(self):
