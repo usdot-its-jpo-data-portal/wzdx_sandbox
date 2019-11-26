@@ -6,10 +6,11 @@ from s3_helper import S3Helper
 
 
 class WorkZoneSandbox(object):
-    def __init__(self, feed, bucket, aws_profile=None, logger=False):
+    def __init__(self, feed, bucket, raw_bucket, aws_profile=None, logger=False):
         self.prefix_template = 'state={state}/feedName={feedName}/year={year}/month={month}/'
         self.feed = feed
         self.bucket = bucket
+        self.raw_bucket = raw_bucket
         self.aws_profile = aws_profile
         self.print_func = print
         if logger:
@@ -30,6 +31,13 @@ class WorkZoneSandbox(object):
         }
         return template.format(**params, **parsed_meta)
 
+    def generate_raw_fp(self, parsed_meta):
+        template = '{feedName}_{datetimeRetrieved}'
+        params = {
+            feedName: self.feed['feedName']
+        }
+        return template.format(**params, **parsed_meta)
+
     def cmp_status(self, cur_status, prev_status, prev_prev_status):
         ignore_keys = ['timestampEventUpdate']
         # consider status as new if last record was at least one day ago
@@ -43,12 +51,17 @@ class WorkZoneSandbox(object):
         return cur_status == prev_status
 
     def update_from_feed(self):
+        datetimeRetrieved = datetime.now()
         r = requests.get(self.feed['url'])
         wzdx = r.json()['WZDx']
         meta = {
             'YYYYMM': wzdx['Header']['timeStampUpdate'][:7].replace('-', ''),
-            'version': wzdx['Header']['versionNo']
+            'version': wzdx['Header']['versionNo'],
+            'datetimeRetrieved': datetimeRetrieved.isoformat()
         }
+        raw_prefix = self.prefix_template.format(**self.feed, year=datetimeRetrieved.strftime('%Y'), month=datetimeRetrieved.strftime('%m'))
+        raw_fp = self.generate_raw_fp(meta)
+        self.s3helper.write_bytes(r.content, self.raw_bucket, key=raw_prefix+raw_fp)
 
         prefix = self.prefix_template.format(**self.feed, year=meta['YYYYMM'][:4], month=meta['YYYYMM'][-2:])
         new_statuses = {self.generate_fp(status, meta): status for status in wzdx['WorkZoneActivity']}
