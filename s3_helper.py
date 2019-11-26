@@ -70,3 +70,8 @@ class S3Helper(object):
     def write_recs(self, recs, bucket, key):
         outbytes = "\n".join([json.dumps(i) for i in recs if i]).encode('utf-8')
         self.client.put_object(Bucket=bucket, Key=key, Body=outbytes)
+
+    def write_bytes(self, outbytes, bucket, key):
+        if type(outbytes) != bytes:
+            outbytes = outbytes.encode('utf-8')
+        self.client.put_object(Bucket=bucket, Key=key, Body=outbytes)
