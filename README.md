@@ -97,7 +97,7 @@ If you plan to deploy the script on your local machine, you need the following:
 
 ## Contributing
 
-1. Fork it (https://github.com/usdot-its-jpo-data-portal/cv_pilot_ingest/fork)
+1. Fork it (https://github.com/usdot-its-jpo-data-portal/wzdx_sandbox/fork)
 2. Create your feature branch (git checkout -b feature/fooBar)
 3. Commit your changes (git commit -am 'Add some fooBar')
 4. Push to the branch (git push origin feature/fooBar)
