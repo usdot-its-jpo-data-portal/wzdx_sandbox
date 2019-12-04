@@ -1,22 +1,88 @@
+from copy import deepcopy
 from datetime import datetime, timedelta
 import dateutil.parser
+import json
+import logging
 import requests
+import xmltodict
 
 from s3_helper import S3Helper
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
 
-class WorkZoneSandbox(object):
-    def __init__(self, feed, bucket, raw_bucket, aws_profile=None, logger=False):
-        self.prefix_template = 'state={state}/feedName={feedName}/year={year}/month={month}/'
-        self.feed = feed
+
+class ITSSandbox(object):
+    def __init__(self, bucket, aws_profile=None, logger=None):
         self.bucket = bucket
-        self.raw_bucket = raw_bucket
-        self.aws_profile = aws_profile
+        self.s3helper = S3Helper(aws_profile=aws_profile)
         self.print_func = print
         if logger:
             self.print_func = logger.info
 
-        self.s3helper = S3Helper(aws_profile=aws_profile)
+    def generate_fp(self, template, params):
+        return template.format(**params)
+
+
+class WorkZoneRawSandbox(ITSSandbox):
+    def __init__(self, bucket, feed=None, lambda_to_trigger=None,
+                # registry_dataset_id=None, socrata_params=None,
+                **kwargs):
+        super(WorkZoneRawSandbox, self).__init__(bucket, **kwargs)
+        self.prefix_template = 'state={state}/feedName={feedname}/year={year}/month={month}/'
+        self.feed = feed
+        self.lambda_to_trigger = lambda_to_trigger
+        # self.registry_dataset_id = registry_dataset_id
+        # self.socrata_params = socrata_params
+
+    def generate_fp(self, datetimeRetrieved):
+        template = '{feedname}_{datetimeRetrieved}'
+        params = {
+            'feedname': self.feed['feedname'],
+            'datetimeRetrieved': datetimeRetrieved
+        }
+        fp = super(WorkZoneRawSandbox, self).generate_fp(template, params)
+        return fp
+
+    def ingest(self):
+        datetimeRetrieved = datetime.now()
+        r = requests.get(self.feed['url']['url'])
+
+        # write raw feed to raw bucket
+        prefix = self.prefix_template.format(**self.feed, year=datetimeRetrieved.strftime('%Y'), month=datetimeRetrieved.strftime('%m'))
+        fp = self.generate_fp(datetimeRetrieved)
+        self.s3helper.write_bytes(r.content, self.bucket, key=prefix+fp)
+
+        # # update last ingest time to Socrata WZDx feed registry
+        # self.feed['lastingestedtosandbox'] = datetime.now().isoformat()
+        # socrata_api = 'https://{domain}/resource/{dataset_id}.json'.format(dataset_id=self.registry_dataset_id, **socrata_params)
+        # r = requests.post(socrata_api,
+        #                   auth=(socrata_params['username'], socrata_params['password']),
+        #                   params={'$$app_token':socrata_params['app_token']},
+        #                   data=json.dumps([self.feed]))
+
+        # trigger semi-parse ingest
+        if self.feed['pipedtosandbox'] == True:
+            self.print_func('Trigger {} for {}'.format(self.lambda_to_trigger, self.feed['feedname']))
+            lambda_client = self.s3helper.session.client('lambda')
+            data_to_send = {'feed': self.feed, 'bucket': self.bucket, 'key': prefix+fp}
+            response = lambda_client.invoke(
+                FunctionName=self.lambda_to_trigger,
+                InvocationType='Event',
+                LogType='Tail',
+                ClientContext='',
+                Payload=json.dumps(data_to_send).encode('utf-8')
+            )
+            self.print_func(response)
+        else:
+            self.print_func('Skip {}'.format(self.feed['feedname']))
+            
+
+class WorkZoneSandbox(ITSSandbox):
+    def __init__(self, bucket, feed=None, **kwargs):
+        super(WorkZoneSandbox, self).__init__(bucket, **kwargs)
+        self.prefix_template = 'state={state}/feedName={feedname}/year={year}/month={month}/'
+        self.feed = feed
 
         self.n_new_status = 0
         self.n_overwrite = 0
@@ -25,19 +91,11 @@ class WorkZoneSandbox(object):
 
     def generate_fp(self, status, parsed_meta):
         template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
-        params = {
-            'identifier': status['identifier'],
-            'beginLocation_roadDirection': status['beginLocation']['roadDirection']
-        }
-        return template.format(**params, **parsed_meta)
-
-    def generate_raw_fp(self, datetimeRetrieved):
-        template = '{feedName}_{datetimeRetrieved}'
-        params = {
-            'feedName': self.feed['feedName'],
-            'datetimeRetrieved': datetimeRetrieved
-        }
-        return template.format(**params)
+        params = deepcopy(parsed_meta)
+        params['identifier'] = status['identifier']
+        params['beginLocation_roadDirection'] = status['beginLocation']['roadDirection']
+        fp = super(WorkZoneSandbox, self).generate_fp(template, params)
+        return fp
 
     def cmp_status(self, cur_status, prev_status, prev_prev_status):
         ignore_keys = ['timestampEventUpdate']
@@ -51,17 +109,23 @@ class WorkZoneSandbox(object):
         prev_status = {k:v for k,v in prev_status['WorkZoneActivity'][0].items() if k not in ignore_keys}
         return cur_status == prev_status
 
-    def update_from_feed(self):
-        datetimeRetrieved = datetime.now()
-        r = requests.get(self.feed['url'])
+    def parse_to_json(self, data):
+        format = self.feed['format']
+        if type(data) == dict:
+            out = data
+        elif format == 'xml':
+            xmldict = xmltodict.parse(data)
+            out = json.loads(json.dumps(xmldict))
+        elif format == 'json':
+            out = json.loads(data)
+        else:
+            out = data
+        return out
 
-        # write raw feed to raw bucket
-        raw_prefix = self.prefix_template.format(**self.feed, year=datetimeRetrieved.strftime('%Y'), month=datetimeRetrieved.strftime('%m'))
-        raw_fp = self.generate_raw_fp(datetimeRetrieved)
-        self.s3helper.write_bytes(r.content, self.raw_bucket, key=raw_prefix+raw_fp)
-
+    def ingest(self, data):
+        data = self.parse_to_json(data)
         # semi-parse feed
-        wzdx = r.json()['WZDx']
+        wzdx = data['WZDx']
         meta = {
             'YYYYMM': wzdx['Header']['timeStampUpdate'][:7].replace('-', ''),
             'version': wzdx['Header']['versionNo']
@@ -103,4 +167,4 @@ class WorkZoneSandbox(object):
             self.s3helper.write_recs(out_recs, self.bucket, key)
 
         self.print_func('{} status found in {} feed: {} skipped, {} overwrites, {} updates, {} new files'.format(
-        len(new_statuses), self.feed['feedName'], self.n_skipped, self.n_overwrite, self.n_new_status, self.n_new_fps))
+        len(new_statuses), self.feed['feedname'], self.n_skipped, self.n_overwrite, self.n_new_status, self.n_new_fps))

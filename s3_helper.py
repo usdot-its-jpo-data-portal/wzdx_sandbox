@@ -5,20 +5,18 @@ import logging
 import traceback
 
 
-class S3Helper(object):
-
+class AWS_helper(object):
     def __init__(self, aws_profile=None, logger=False):
         self.aws_profile = aws_profile
         self.print_func = print
         if logger:
             self.print_func = logger.info
-
-        self.client = self._get_client()
+        self.session = self._create_aws_session()
 
     def _create_aws_session(self):
         try:
             if self.aws_profile:
-                session = boto3.session.Session(profile_name=self.aws_profile)
+                session = boto3.session.Session(profile_name=self.aws_profile, region_name='us-east-1')
             else:
                 session = boto3.session.Session()
         except botocore.exceptions.ProfileNotFound:
@@ -30,9 +28,15 @@ class S3Helper(object):
             exit()
         return session
 
+
+class S3Helper(AWS_helper):
+
+    def __init__(self, **kwargs):
+        super(S3Helper, self).__init__(**kwargs)
+        self.client = self._get_client()
+
     def _get_client(self):
-        aws_session = self._create_aws_session()
-        return aws_session.client('s3')
+        return self.session.client('s3')
 
     def path_exists(self, bucket, path):
         try:
