@@ -1,3 +1,7 @@
+'''
+AWS and AWS S3 Helper functions.
+
+'''
 import boto3
 import botocore.exceptions
 import json
@@ -6,6 +10,10 @@ import traceback
 
 
 class AWS_helper(object):
+    '''
+    Helper class for connecting to AWS.
+
+    '''
     def __init__(self, aws_profile=None, logger=False):
         self.aws_profile = aws_profile
         self.print_func = print
@@ -14,6 +22,13 @@ class AWS_helper(object):
         self.session = self._create_aws_session()
 
     def _create_aws_session(self):
+        '''
+        Creates AWS session using aws profile name passed in or using aws
+        credentials in environment variables.
+
+        Returns:
+            AWS session object.
+        '''
         try:
             if self.aws_profile:
                 session = boto3.session.Session(profile_name=self.aws_profile, region_name='us-east-1')
@@ -30,15 +45,35 @@ class AWS_helper(object):
 
 
 class S3Helper(AWS_helper):
+    '''
+    Helper class for connecting to AWS.
+
+    '''
 
     def __init__(self, **kwargs):
         super(S3Helper, self).__init__(**kwargs)
         self.client = self._get_client()
 
     def _get_client(self):
+        '''
+        Creates S3 client.
+
+        Returns:
+            AWS S3 client.
+        '''
         return self.session.client('s3')
 
     def path_exists(self, bucket, path):
+        '''
+        Check if S3 path exists.
+
+        Parameters:
+            bucket: name of S3 bucket
+            path: key of S3 path
+
+        Returns:
+            Boolean (True/False)
+        '''
         try:
             self.client.get_object(Bucket=bucket, Key=path)
             return True
@@ -46,6 +81,16 @@ class S3Helper(AWS_helper):
             return False
 
     def get_data_stream(self, bucket, key):
+        '''
+        Get data stream.
+
+        Parameters:
+            bucket: name of S3 bucket
+            path: key of S3 path
+
+        Returns:
+            "Readable" file datastream objects
+        '''
         obj = self.client.get_object(Bucket=bucket, Key=key)
         if key[-3:] == '.gz':
             gzipped = GzipFile(None, 'rb', fileobj=obj['Body'])
@@ -55,6 +100,17 @@ class S3Helper(AWS_helper):
         return data
 
     def newline_json_rec_generator(self, data_stream):
+        '''
+        Receives a data stream that is assumed to be in the newline JSON format
+        (one stringified json per line), reads and returns these records as
+        dictionary objects one at a time.
+
+        Parameters:
+            data_stream: "Readable" file datastream objects
+
+        Returns:
+            Iterable array of dictionary objects
+        '''
         line = data_stream.readline()
         while line:
             if type(line) == bytes:
@@ -72,10 +128,33 @@ class S3Helper(AWS_helper):
             line = data_stream.readline()
 
     def write_recs(self, recs, bucket, key):
+        '''
+        Writes the array of dictionary objects as newline json text file to the
+        specified S3 key in the specified S3 bucket
+
+        Parameters:
+            recs: array of dictionary objects
+            bucket: name of S3 bucket
+            path: key of S3 path
+
+        Returns:
+            None
+        '''
         outbytes = "\n".join([json.dumps(i) for i in recs if i]).encode('utf-8')
         self.client.put_object(Bucket=bucket, Key=key, Body=outbytes)
 
     def write_bytes(self, outbytes, bucket, key):
+        '''
+        Writes the bytes to the specified S3 key in the specified S3 bucket
+
+        Parameters:
+            outbytes: bytes
+            bucket: name of S3 bucket
+            path: key of S3 path
+
+        Returns:
+            None
+        '''
         if type(outbytes) != bytes:
             outbytes = outbytes.encode('utf-8')
         self.client.put_object(Bucket=bucket, Key=key, Body=outbytes)
