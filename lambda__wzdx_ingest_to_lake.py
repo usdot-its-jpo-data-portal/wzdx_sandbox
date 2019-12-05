@@ -1,5 +1,5 @@
 """
-Ingest from WZDx
+Ingest and parse WZDx feed data to Work Zone Data Sandbox.
 
 """
 from __future__ import print_function
