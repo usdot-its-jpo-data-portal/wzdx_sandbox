@@ -44,7 +44,7 @@ class AWS_helper(object):
         """
         try:
             if self.aws_profile:
-                session = boto3.session.Session(profile_name=self.aws_profile, region_name='us-east-1')
+                session = boto3.session.Session(profile_name=self.aws_profile)
             else:
                 session = boto3.session.Session()
         except botocore.exceptions.ProfileNotFound:
