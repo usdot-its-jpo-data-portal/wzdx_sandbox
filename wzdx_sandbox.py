@@ -197,12 +197,16 @@ class WorkZoneSandbox(ITSSandbox):
         """
         template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
         params = deepcopy(parsed_meta)
-        params['identifier'] = status['identifier']
-        params['beginLocation_roadDirection'] = status['beginLocation']['roadDirection']
+        if params['version'] == '1':
+            params['identifier'] = status['identifier']
+            params['beginLocation_roadDirection'] = status['beginLocation']['roadDirection']
+        else:
+            params['identifier'] = status['properties']['road_event_id']
+            params['beginLocation_roadDirection'] = status['properties']['direction']
         fp = super(WorkZoneSandbox, self).generate_fp(template, params)
         return fp
 
-    def cmp_status(self, cur_status, prev_status, prev_prev_status):
+    def cmp_status(self, cur_status, prev_status, prev_prev_status, field_name_tuple):
         """
         Method to check 1) if the current status is retrieved less than one day
         ago compared to the status prior to the previous status, and 2) if the
@@ -217,20 +221,22 @@ class WorkZoneSandbox(ITSSandbox):
                 from the same feed and for the same work zone that had been ingested.
             prev_prev_status: Dictionary object of status prior to teh previous status,
                 also from the same feed and for the same work zone that had been ingested.
-
+            field_name_tuple: Tuple consisting of field names for feed header (feed
+                metadata), last updated timestamp, and activity list, in that order.
         Returns:
             Boolean value showing whether or not the current status should overwrite
             the previous status.
         """
         ignore_keys = ['timestampEventUpdate']
         # consider status as new if last record was at least one day ago
-        time_diff = dateutil.parser.parse(cur_status['Header']['timeStampUpdate']) - dateutil.parser.parse(prev_prev_status['Header']['timeStampUpdate'])
+        headerFieldName, updateTimeFieldName, activityListFieldName = field_name_tuple
+        time_diff = dateutil.parser.parse(cur_status[headerFieldName][updateTimeFieldName]) - dateutil.parser.parse(prev_prev_status[headerFieldName][updateTimeFieldName])
         if time_diff >= timedelta(days=1):
             return False
 
         # if last record is more recent, consider status as new only if any non-ignored field is different
-        cur_status = {k:v for k,v in cur_status['WorkZoneActivity'][0].items() if k not in ignore_keys}
-        prev_status = {k:v for k,v in prev_status['WorkZoneActivity'][0].items() if k not in ignore_keys}
+        cur_status = {k:v for k,v in cur_status[activityListFieldName][0].items() if k not in ignore_keys}
+        prev_status = {k:v for k,v in prev_status[activityListFieldName][0].items() if k not in ignore_keys}
         return cur_status == prev_status
 
     def parse_to_json(self, data):
@@ -249,7 +255,7 @@ class WorkZoneSandbox(ITSSandbox):
         elif format == 'xml':
             xmldict = xmltodict.parse(data)
             out = json.loads(json.dumps(xmldict))
-        elif format == 'json':
+        elif format in ['json', 'geojson']:
             out = json.loads(data)
         else:
             out = data
@@ -266,18 +272,32 @@ class WorkZoneSandbox(ITSSandbox):
         """
         data = self.parse_to_json(data)
         # semi-parse feed
-        wzdx = data['WZDx']
+        if self.feed['version'] == '1':
+            # spec version 1
+            data = data['WZDx']
+            activityListFieldName = 'WorkZoneActivity'
+            headerFieldName = 'Header'
+            updateTimeFieldName = 'timeStampUpdate'
+            feedVersion = data[headerFieldName]['versionNo']
+            generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity]}
+        else:
+            # spec version 2
+            activityListFieldName = 'features'
+            headerFieldName = 'road_event_feed_info'
+            updateTimeFieldName = 'feed_update_date'
+            feedVersion = data[headerFieldName]['version']
+            generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity], 'type': data['type']}
+        field_name_tuple = (headerFieldName, updateTimeFieldName, activityListFieldName)
         meta = {
-            'YYYYMM': wzdx['Header']['timeStampUpdate'][:7].replace('-', ''),
-            'version': wzdx['Header']['versionNo']
+            'YYYYMM': data[headerFieldName][updateTimeFieldName][:7].replace('-', ''),
+            'version': feedVersion
         }
-
         prefix = self.prefix_template.format(**self.feed, year=meta['YYYYMM'][:4], month=meta['YYYYMM'][-2:])
-        new_statuses = {self.generate_fp(status, meta): status for status in wzdx['WorkZoneActivity']}
+        new_statuses = {self.generate_fp(status, meta): status for status in data[activityListFieldName]}
 
         for fp, current_status in new_statuses.items():
             key = prefix+fp
-            out_rec = {'Header': wzdx['Header'], 'WorkZoneActivity': [current_status]}
+            out_rec = generate_out_rec(current_status)
             if self.s3helper.path_exists(self.bucket, key):
                 # if not first status for the workzone for the month
                 datastream = self.s3helper.get_data_stream(self.bucket, key)
@@ -295,7 +315,7 @@ class WorkZoneSandbox(ITSSandbox):
                     print('Only 1 rec and not the same')
                 else:
                     # if more than one record, compare current record with previous and previous previous record
-                    if self.cmp_status(out_rec, recs[-1], recs[-2]):
+                    if self.cmp_status(out_rec, recs[-1], recs[-2], field_name_tuple):
                         out_recs = recs[:-1] + [out_rec]
                         self.n_overwrite += 1
                     else:
