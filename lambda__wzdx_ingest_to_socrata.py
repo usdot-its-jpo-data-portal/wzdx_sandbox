@@ -14,8 +14,8 @@ from sandbox_exporter.socrata_util import SocrataDataset
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
 
-DATASET_ID = os.environ.get('DATASET_ID')
-SOCRATA_PARAMS = os.environ.get('SOCRATA_PARAMS')
+
+SOCRATA_PARAMS = json.loads(os.environ.get('SOCRATA_PARAMS', ''))
 
 
 if None in [BUCKET]:
@@ -37,8 +37,9 @@ def lambda_handler(event=None, context=None):
 
     # check if socrata data is stale
     # section does not work for wzdx v1 feeds
-    dataset = SocrataDataset(dataset_id=DATASET_ID, socrata_params=SOCRATA_PARAMS)
-    sample_current_records = dataset.client.get(DATASET_ID, limit=1)
+    dataset_id = event['feed']['socratadatasetid']
+    dataset = SocrataDataset(dataset_id=dataset_id, socrata_params=SOCRATA_PARAMS)
+    sample_current_records = dataset.client.get(dataset_id, limit=1)
     last_updated_time = sample_current_records[0]['feed_update_date'][:19]
 
     if not current_updated_time > last_updated_time:
