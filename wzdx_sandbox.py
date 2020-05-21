@@ -52,6 +52,7 @@ class WorkZoneRawSandbox(ITSSandbox):
 
     """
     def __init__(self, bucket, feed=None, lambda_to_trigger=None,
+                socrata_lambda_to_trigger=None,
                 # registry_dataset_id=None, socrata_params=None,
                 **kwargs):
         """
@@ -77,6 +78,7 @@ class WorkZoneRawSandbox(ITSSandbox):
         self.prefix_template = 'state={state}/feedName={feedname}/year={year}/month={month}/'
         self.feed = feed
         self.lambda_to_trigger = lambda_to_trigger
+        self.socrata_lambda_to_trigger = socrata_lambda_to_trigger
 
         # variables necessary to update last ingest time to Socrata WZDx feed registry
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
@@ -148,6 +150,22 @@ class WorkZoneRawSandbox(ITSSandbox):
         else:
             self.print_func('Skip triggering ingestion of {} to sandbox.'.format(self.feed['feedname']))
 
+        # trigger ingest to socrata
+        if self.feed['pipedtosocrata'] == True:
+            self.print_func('Trigger {} for {}'.format(self.socrata_lambda_to_trigger, self.feed['feedname']))
+            lambda_client = self.s3helper.session.client('lambda')
+            data_to_send = {'feed': self.feed, 'bucket': self.bucket, 'key': prefix+fp}
+            response = lambda_client.invoke(
+                FunctionName=self.socrata_lambda_to_trigger,
+                InvocationType='Event',
+                LogType='Tail',
+                ClientContext='',
+                Payload=json.dumps(data_to_send).encode('utf-8')
+            )
+            self.print_func(response)
+        else:
+            self.print_func('Skip triggering ingestion of {} to Socrata.'.format(self.feed['feedname']))
+
 
 class WorkZoneSandbox(ITSSandbox):
     """
@@ -197,7 +215,7 @@ class WorkZoneSandbox(ITSSandbox):
         """
         template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
         params = deepcopy(parsed_meta)
-        if params['version'] == '1':
+        if self.feed['version'] == '1':
             params['identifier'] = status['identifier']
             params['beginLocation_roadDirection'] = status['beginLocation']['roadDirection']
         else:
