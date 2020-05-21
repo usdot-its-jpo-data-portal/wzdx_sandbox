@@ -114,14 +114,20 @@ class WorkZoneRawSandbox(ITSSandbox):
 
         """
         datetimeRetrieved = datetime.now()
-        r = requests.get(self.feed['url']['url'])
-
-        # write raw feed to raw bucket
         prefix = self.prefix_template.format(**self.feed, year=datetimeRetrieved.strftime('%Y'), month=datetimeRetrieved.strftime('%m'))
         fp = self.generate_fp(datetimeRetrieved)
-        self.s3helper.write_bytes(r.content, self.bucket, key=prefix+fp)
 
-        self.print_func('Raw data ingested from {} to {} at {} UTC'.format(self.feed['url']['url'], prefix+fp, datetimeRetrieved))
+        try:
+            r = requests.get(self.feed['url']['url'])
+            data_to_write = r.content
+            self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
+            self.print_func('Raw data ingested from {} to {} at {} UTC'.format(self.feed['url']['url'], prefix+fp, datetimeRetrieved))
+        except:
+            data_to_write = f'The feed at {datetimeRetrieved.isoformat()}.'.encode('utf-8')
+            fp += '__FEED_NOT_RETRIEVED'
+            self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
+            self.print_func('We could not ingest data from {} at {} UTC'.format(self.feed['url']['url'], datetimeRetrieved))
+            return
 
         # update last ingest time to Socrata WZDx feed registry
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
