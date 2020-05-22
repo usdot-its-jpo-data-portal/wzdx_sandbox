@@ -1,10 +1,10 @@
 # wzdx_sandbox
 
-This repository includes code for ingesting Work Zone Data Exchange (WZDx) feed data into ITS DataHub's Work Zone Data Archives. Specifically, this includes:
-- lambda function `wzdx_ingest_to_archive`. Triggered by `wzdx_trigger_ingest` lambda function from [wzdx_registry](https://github.com/usdot-its-jpo-data-portal/wzdx_registry) GitHub repository, this lambda uses the feed metadata passed from `wzdx_trigger_ingest` from [WZDx Feed Registry](https://datahub.transportation.gov/d/69qe-yiui) to ingest a raw copy of a WZDx feed into the [raw data sandbox](http://usdot-its-workzone-raw-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive and triggers `wzdx_ingest_to_lake` and `wzdx_ingest_to_socrata` lambda functions based on the feed's metadata.
-- lambda function `wzdx_ingest_to_lake`. This lambda function ingests a semi-processed copy of a WZDx feed into the [semi-processed data sandbox](http://usdot-its-workzone-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive.
-- lambda function `wzdx_ingest_to_socrata`. This lambda function ingests a transformed tabular copy of a WZDx feed into a integrated Socrata dataset on data.transportation.gov that is associated with the feed.
-- landing page for the Work Zone Data Archive S3 explorer sites.
+This repository includes code for ingesting [Work Zone Data Exchange (WZDx)](https://github.com/usdot-jpo-ode/jpo-wzdx) feed data into ITS DataHub's Work Zone Data Archives. Specifically, this includes:
+- Lambda function `wzdx_ingest_to_archive`. Triggered by `wzdx_trigger_ingest` lambda function from [wzdx_registry](https://github.com/usdot-its-jpo-data-portal/wzdx_registry) GitHub repository, this lambda uses the feed metadata passed from `wzdx_trigger_ingest` from [WZDx Feed Registry](https://datahub.transportation.gov/d/69qe-yiui) to ingest a raw copy of a WZDx feed into the [raw data sandbox](http://usdot-its-workzone-raw-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive and triggers `wzdx_ingest_to_lake` and `wzdx_ingest_to_socrata` lambda functions based on the feed's metadata.
+- Lambda function `wzdx_ingest_to_lake`. This lambda function ingests a semi-processed copy of a WZDx feed into the [semi-processed data sandbox](http://usdot-its-workzone-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive.
+- Lambda function `wzdx_ingest_to_socrata`. This lambda function ingests a transformed tabular copy of a WZDx feed into a integrated Socrata dataset on data.transportation.gov that is associated with the feed.
+- Landing page for the Work Zone Data Archive S3 explorer sites.
 
 For more information on ITS Sandbox data, please refer to the [ITS Sandbox README page](https://github.com/usdot-its-jpo-data-portal/sandbox). For an overview on WZDx resources on ITS DataHub, please refer to the [WZDx data story](https://datahub.transportation.gov/d/jixs-h7uw).
 
