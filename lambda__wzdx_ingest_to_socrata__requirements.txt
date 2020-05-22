@@ -1,0 +1,2 @@
+requests==2.20.0
+git+https://github.com/usdot-its-jpo-data-portal/sandbox_exporter@master#egg=s3select
