@@ -26,7 +26,7 @@ if None in [BUCKET]:
 def lambda_handler(event=None, context=None):
     """AWS Lambda handler. """
     # load and initialize data flattener based on schema version
-    flattener_class = load_flattener(f'wzdx/V{event['feed']['version']}')
+    flattener_class = load_flattener('wzdx/V{}'.format(event['feed']['version']))
     flattener = flattener_class()
 
     # load and parse data
