@@ -10,6 +10,7 @@ import traceback
 from wzdx_sandbox import WorkZoneSandbox
 from sandbox_exporter.flattener import load_flattener
 from sandbox_exporter.socrata_util import SocrataDataset
+from sandbox_exporter.flattener_wzdx import WzdxV2Flattener
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
@@ -18,15 +19,11 @@ logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
 SOCRATA_PARAMS = json.loads(os.environ.get('SOCRATA_PARAMS', ''))
 
 
-if None in [BUCKET]:
-    logger.error('Required ENV variable(s) not found. Please make sure you have specified the following ENV variables: BUCKET')
-    exit()
-
-
 def lambda_handler(event=None, context=None):
     """AWS Lambda handler. """
     # load and initialize data flattener based on schema version
-    flattener_class = load_flattener('wzdx/V{}'.format(event['feed']['version']))
+    # flattener_class = load_flattener('wzdx/V{}'.format(event['feed']['version']))
+    flattener_class = WzdxV2Flattener
     flattener = flattener_class()
 
     # load and parse data
@@ -51,7 +48,7 @@ def lambda_handler(event=None, context=None):
     flattened_recs = flattener.process_and_split(data)
     response = dataset.clean_and_upsert(flattened_recs, working_id)
     logger.info(response)
-    so_ingestor.publish_draft(working_id)
+    dataset.publish_draft(working_id)
     logger.info(f'New draft for dataset {working_id} published.')
     return
 
