@@ -49,11 +49,7 @@ permissions and limitations under the License.
                             <!-- Bucket selection and breadcrumbs -->
                             <div class="btn-group pull-left">
                                 <div class="pull-left">
-                                    AWS S3 Explorer&nbsp;
-                                </div>
-                                <!-- Bucket selection -->
-                                <div class="btn pull-left" id="bucket">
-                                    <i id="bucket-chooser" style="cursor: pointer;" class="fa fa-bitbucket fa-2x" title="Switch to a different S3 Bucket"></i>
+                                    U.S. DOT ITS WorkZone Sandbox
                                 </div>
                                 <!-- Bucket breadcrumbs -->
                                 <div class="btn pull-right">
@@ -66,22 +62,6 @@ permissions and limitations under the License.
                             </div>
                             <!-- Folder/Bucket radio group and progress spinner -->
                             <div class="btn-group pull-right">
-                                <div class="checkbox pull-left">
-                                    <label>
-                                        <input type="checkbox" id="hidefolders">&nbsp;Hide folders?
-                                    </label>
-                                    <!-- Folder/Bucket radio group -->
-                                    <div class="btn-group" data-toggle="buttons">
-                                        <label class="btn btn-primary active" title="View all objects in folder">
-                                            <i class="fa fa-angle-double-up"></i>
-                                            <input type="radio" name="optionsdepth" value="folder" id="optionfolder" checked>&nbsp;Folder
-                                        </label>
-                                        <label class="btn btn-primary" title="View all objects in bucket">
-                                            <i class="fa fa-angle-double-down"></i>
-                                            <input type="radio" name="optionsdepth" value="bucket" id="optionbucket">&nbsp;Bucket
-                                        </label>
-                                    </div>
-                                </div>
                                 <!-- Dual purpose: progress spinner and refresh button -->
                                 <div class="btn-group pull-right" id="refresh">
                                     <span id="bucket-loader" style="cursor: pointer;" class="btn fa fa-refresh fa-2x pull-left" title="Refresh"></span>
@@ -91,7 +71,6 @@ permissions and limitations under the License.
                         </div>
                         <!-- Panel release notes above S3 object table -->
                         <div class="panel-body">
-                            <h1>USDOT ITS WorkZone Sandbox</h1>
                             <p>This S3 bucket contains semi-processed raw data from selected WorkZone Data Exchange (WZDx) feeds.</p>
                             <p>The data is currently stored using the following naming structure:</p>
 
@@ -513,7 +492,7 @@ $(document).ready(function(){
             resetDepth();
             delete s3exp_config.Marker;
             s3exp_config.Prefix = target.dataset.prefix;
-            s3exp_config.Delimiter = $("input[name='optionsdepth']:checked").val() == "folder" ? "/" : "";
+            s3exp_config.Delimiter = $("input[name='optionsdepth']:checked").val() == "folder" ? "/" : "/";
             (s3exp_lister = s3list(s3exp_config, s3draw)).go();
         // Else user has clicked on an object so download it in new window/tab
         } else {
