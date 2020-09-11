@@ -37,19 +37,24 @@ def lambda_handler(event=None, context=None):
     dataset_id = event['feed']['socratadatasetid']
     dataset = SocrataDataset(dataset_id=dataset_id, socrata_params=SOCRATA_PARAMS)
     sample_current_records = dataset.client.get(dataset_id, limit=1)
-    last_updated_time = sample_current_records[0]['feed_update_date'][:19]
-
-    if not current_updated_time > last_updated_time:
-        logger.info(f'No update needed - feed has not been updated since {last_updated_time}')
-        return
+    if not sample_current_records:
+        pass
+    else:
+        last_updated_time = sample_current_records[0]['feed_update_date'][:19]
+        if not current_updated_time > last_updated_time:
+            logger.info(f'No update needed - feed has not been updated since {last_updated_time}')
+            return
 
     # feed content is newer than what is in Socrata
-    working_id = dataset.create_new_draft()
     flattened_recs = flattener.process_and_split(data)
-    response = dataset.clean_and_upsert(flattened_recs, working_id)
-    logger.info(response)
-    dataset.publish_draft(working_id)
-    logger.info(f'New draft for dataset {working_id} published.')
+    if flattened_recs:
+        working_id = dataset.create_new_draft()
+        response = dataset.clean_and_upsert(flattened_recs, working_id)
+        logger.info(response)
+        dataset.publish_draft(working_id)
+        logger.info(f'New draft for dataset {working_id} published.')
+    else:
+        logger.info(f'No records in feed - will not update Socrata dataset')
     return
 
 
