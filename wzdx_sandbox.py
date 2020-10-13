@@ -123,12 +123,12 @@ class WorkZoneRawSandbox(ITSSandbox):
             data_to_write = r.content
             self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
             self.print_func('Raw data ingested from {} to {} at {} UTC'.format(self.feed['url']['url'], prefix+fp, datetimeRetrieved))
-        except:
+        except BaseException as e:
             data_to_write = f'The feed at {datetimeRetrieved.isoformat()}.'.encode('utf-8')
             fp += '__FEED_NOT_RETRIEVED'
             self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
             self.print_func('We could not ingest data from {} at {} UTC'.format(self.feed['url']['url'], datetimeRetrieved))
-            return
+            raise e
 
         # update last ingest time to Socrata WZDx feed registry
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
@@ -286,11 +286,12 @@ class WorkZoneSandbox(ITSSandbox):
             else:
                 out = data
             return out
-        except:
+        except BaseException as e:
             self.print_func('ERROR WITH FEED')
             self.print_func('FEED: {}'.format(self.feed))
             self.print_func('DATA: {}'.format(data))
             self.print_func(traceback.format_exc())
+            raise e
 
     def ingest(self, data):
         """
