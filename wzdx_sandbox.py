@@ -9,6 +9,7 @@ import json
 import logging
 import requests
 import xmltodict
+import traceback
 
 from s3_helper import S3Helper
 
@@ -273,17 +274,23 @@ class WorkZoneSandbox(ITSSandbox):
         Returns:
             Dictionary object equivalent of the data.
         """
-        format = self.feed['format']
-        if type(data) == dict:
-            out = data
-        elif format == 'xml':
-            xmldict = xmltodict.parse(data)
-            out = json.loads(json.dumps(xmldict))
-        elif format in ['json', 'geojson']:
-            out = json.loads(data)
-        else:
-            out = data
-        return out
+        try:
+            format = self.feed['format']
+            if type(data) == dict:
+                out = data
+            elif format == 'xml':
+                xmldict = xmltodict.parse(data)
+                out = json.loads(json.dumps(xmldict))
+            elif format in ['json', 'geojson']:
+                out = json.loads(data)
+            else:
+                out = data
+            return out
+        except:
+            self.print_func('ERROR WITH FEED')
+            self.print_func('FEED: {}'.format(self.feed))
+            self.print_func('DATA: {}'.format(data))
+            self.print_func(traceback.format_exc())
 
     def ingest(self, data):
         """
@@ -304,13 +311,21 @@ class WorkZoneSandbox(ITSSandbox):
             updateTimeFieldName = 'timeStampUpdate'
             feedVersion = data[headerFieldName]['versionNo']
             generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity]}
-        else:
+        elif self.feed['version'] == '2':
             # spec version 2
             activityListFieldName = 'features'
             headerFieldName = 'road_event_feed_info'
             updateTimeFieldName = 'feed_update_date'
             feedVersion = data[headerFieldName]['version']
             generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity], 'type': data['type']}
+        else:
+            # spec version 3
+            activityListFieldName = 'features'
+            headerFieldName = 'road_event_feed_info'
+            updateTimeFieldName = 'update_date'
+            feedVersion = data[headerFieldName]['version']
+            generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity], 'type': data['type']}
+
         field_name_tuple = (headerFieldName, updateTimeFieldName, activityListFieldName)
         meta = {
             'YYYYMM': data[headerFieldName][updateTimeFieldName][:7].replace('-', ''),
@@ -328,7 +343,7 @@ class WorkZoneSandbox(ITSSandbox):
                 recs = [rec for rec in self.s3helper.newline_json_rec_generator(datastream)]
                 if out_rec == recs[-1]:
                     # skip if completely the same as previous record
-                    print('Skipped')
+                    self.print_func('Skipped')
                     self.n_skipped += 1
                     continue
 
@@ -336,7 +351,7 @@ class WorkZoneSandbox(ITSSandbox):
                     # if only one record so far, automatically archive first record and save current record
                     out_recs = recs + [out_rec]
                     self.n_new_status += 1
-                    print('Only 1 rec and not the same')
+                    self.print_func('Only 1 rec and not the same')
                 else:
                     # if more than one record, compare current record with previous and previous previous record
                     if self.cmp_status(out_rec, recs[-1], recs[-2], field_name_tuple):
