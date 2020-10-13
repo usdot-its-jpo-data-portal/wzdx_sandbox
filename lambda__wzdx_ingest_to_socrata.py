@@ -37,9 +37,7 @@ def lambda_handler(event=None, context=None):
     dataset_id = event['feed']['socratadatasetid']
     dataset = SocrataDataset(dataset_id=dataset_id, socrata_params=SOCRATA_PARAMS)
     sample_current_records = dataset.client.get(dataset_id, limit=1)
-    if not sample_current_records:
-        pass
-    else:
+    if sample_current_records:
         last_updated_time = sample_current_records[0]['feed_update_date'][:19]
         if not current_updated_time > last_updated_time:
             logger.info(f'No update needed - feed has not been updated since {last_updated_time}')
