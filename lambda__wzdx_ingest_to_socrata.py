@@ -10,7 +10,7 @@ import traceback
 from wzdx_sandbox import WorkZoneSandbox
 from sandbox_exporter.flattener import load_flattener
 from sandbox_exporter.socrata_util import SocrataDataset
-from sandbox_exporter.flattener_wzdx import WzdxV2Flattener
+from sandbox_exporter.flattener_wzdx import WzdxV2Flattener, WzdxV3Flattener
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
@@ -23,7 +23,10 @@ def lambda_handler(event=None, context=None):
     """AWS Lambda handler. """
     # load and initialize data flattener based on schema version
     # flattener_class = load_flattener('wzdx/V{}'.format(event['feed']['version']))
-    flattener_class = WzdxV2Flattener
+    if int(event['feed']['version']) == 2:
+        flattener_class = WzdxV2Flattener
+    elif int(event['feed']['version']) == 3:
+        flattener_class = WzdxV3Flattener
     flattener = flattener_class()
 
     # load and parse data
