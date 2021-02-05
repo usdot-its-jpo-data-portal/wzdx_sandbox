@@ -84,7 +84,7 @@ class WorkZoneRawSandbox(ITSSandbox):
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
         # leaving the block below in case we move the step to this function
 
-    def generate_fp(self, datetime_retrieved, params):
+    def generate_fp(self, datetime_retrieved):
         """
         Method to generate file name for the raw archive file based on the template,
         feed name, and time the feed was retrieved.
