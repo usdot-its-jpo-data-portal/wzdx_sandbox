@@ -249,14 +249,14 @@ class WorkZoneSandbox(ITSSandbox):
         """
         ignore_keys = ['timestampEventUpdate']
         # consider status as new if last record was at least one day ago
-        header_field_name, update_time_fieldName, activity_list_fieldName = field_name_tuple
-        time_diff = dateutil.parser.parse(cur_status[header_field_name][update_time_fieldName]) - dateutil.parser.parse(prev_prev_status[header_field_name][update_time_fieldName])
+        header_field_name, update_time_field_name, activity_list_field_name = field_name_tuple
+        time_diff = dateutil.parser.parse(cur_status[header_field_name][update_time_field_name]) - dateutil.parser.parse(prev_prev_status[header_field_name][update_time_field_name])
         if time_diff >= timedelta(days=1):
             return False
 
         # if last record is more recent, consider status as new only if any non-ignored field is different
-        cur_status = {k:v for k,v in cur_status[activity_list_fieldName][0].items() if k not in ignore_keys}
-        prev_status = {k:v for k,v in prev_status[activity_list_fieldName][0].items() if k not in ignore_keys}
+        cur_status = {k:v for k,v in cur_status[activity_list_field_name][0].items() if k not in ignore_keys}
+        prev_status = {k:v for k,v in prev_status[activity_list_field_name][0].items() if k not in ignore_keys}
         return cur_status == prev_status
 
     def parse_to_json(self, data):
@@ -302,29 +302,29 @@ class WorkZoneSandbox(ITSSandbox):
         if self.feed['version'] == '1':
             # spec version 1
             data = data['WZDx']
-            activity_list_fieldName = 'WorkZoneActivity'
+            activity_list_field_name = 'WorkZoneActivity'
             header_field_name = 'Header'
-            update_time_fieldName = 'timeStampUpdate'
+            update_time_field_name = 'timeStampUpdate'
             feed_version = data[header_field_name]['versionNo']
-            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_fieldName: [activity]}
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity]}
         elif self.feed['version'] == '2':
             # spec version 2
             activity_list_fieldName = 'features'
             header_field_name = 'road_event_feed_info'
-            update_time_fieldName = 'feed_update_date'
+            update_time_field_name = 'feed_update_date'
             feed_version = data[header_field_name]['version']
-            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_fieldName: [activity], 'type': data['type']}
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
         else:
             # spec version 3
             activity_list_fieldName = 'features'
             header_field_name = 'road_event_feed_info'
-            update_time_fieldName = 'update_date'
+            update_time_field_name = 'update_date'
             feed_version = data[header_field_name]['version']
-            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_fieldName: [activity], 'type': data['type']}
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
 
-        field_name_tuple = (header_field_name, update_time_fieldName, activity_list_fieldName)
+        field_name_tuple = (header_field_name, update_time_field_name, activity_list_fieldName)
         meta = {
-            'YYYYMM': data[header_field_name][update_time_fieldName][:7].replace('-', ''),
+            'YYYYMM': data[header_field_name][update_time_field_name][:7].replace('-', ''),
             'version': feed_version
         }
         prefix = self.prefix_template.format(**self.feed, year=meta['YYYYMM'][:4], month=meta['YYYYMM'][-2:])
