@@ -309,7 +309,7 @@ class WorkZoneSandbox(ITSSandbox):
             generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity]}
         elif self.feed['version'] == '2':
             # spec version 2
-            activity_list_fieldName = 'features'
+            activity_list_field_name = 'features'
             header_field_name = 'road_event_feed_info'
             update_time_field_name = 'feed_update_date'
             feed_version = data[header_field_name]['version']
