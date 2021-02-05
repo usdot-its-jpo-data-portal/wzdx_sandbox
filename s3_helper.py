@@ -9,14 +9,14 @@ import logging
 import traceback
 
 
-class AWS_helper(object):
+class aws_helper(object):
     """
     Helper class for connecting to AWS.
 
     """
     def __init__(self, aws_profile=None, logger=False):
         """
-        Initialization function of the AWS_helper class.
+        Initialization function of the aws_helper class.
 
         Parameters:
             aws_profile: Optional string name of your AWS profile, as set up in
@@ -57,7 +57,7 @@ class AWS_helper(object):
         return session
 
 
-class S3Helper(AWS_helper):
+class S3Helper(aws_helper):
     """
     Helper class for connecting to and working with AWS S3.
 

@@ -54,7 +54,6 @@ class WorkZoneRawSandbox(ITSSandbox):
     """
     def __init__(self, bucket, feed=None, lambda_to_trigger=None,
                 socrata_lambda_to_trigger=None,
-                # registry_dataset_id=None, socrata_params=None,
                 **kwargs):
         """
         Initialization function of the WorkZoneRawSandbox class.
@@ -85,24 +84,21 @@ class WorkZoneRawSandbox(ITSSandbox):
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
         # leaving the block below in case we move the step to this function
 
-        # self.registry_dataset_id = registry_dataset_id
-        # self.socrata_params = socrata_params
-
-    def generate_fp(self, datetimeRetrieved):
+    def generate_fp(self, datetime_retrieved):
         """
         Method to generate file name for the raw archive file based on the template,
         feed name, and time the feed was retrieved.
 
         Parameters:
-            datetimeRetrieved: datetime object
+            datetime_retrieved: datetime object
 
         Returns:
             String representing the file name
         """
-        template = '{feedname}_{datetimeRetrieved}'
+        template = '{feedname}_{datetime_retrieved}'
         params = {
             'feedname': self.feed['feedname'],
-            'datetimeRetrieved': datetimeRetrieved
+            'datetime_retrieved': datetime_retrieved
         }
         fp = super(WorkZoneRawSandbox, self).generate_fp(template, params)
         return fp
@@ -114,27 +110,26 @@ class WorkZoneRawSandbox(ITSSandbox):
         Zone Semi-processed Sandbox.
 
         """
-        datetimeRetrieved = datetime.now()
-        prefix = self.prefix_template.format(**self.feed, year=datetimeRetrieved.strftime('%Y'), month=datetimeRetrieved.strftime('%m'))
-        fp = self.generate_fp(datetimeRetrieved)
+        datetime_retrieved = datetime.now()
+        prefix = self.prefix_template.format(**self.feed, year=datetime_retrieved.strftime('%Y'), month=datetime_retrieved.strftime('%m'))
+        fp = self.generate_fp(datetime_retrieved)
 
         try:
             r = requests.get(self.feed['url']['url'])
             data_to_write = r.content
             self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
-            self.print_func('Raw data ingested from {} to {} at {} UTC'.format(self.feed['url']['url'], prefix+fp, datetimeRetrieved))
+            self.print_func('Raw data ingested from {} to {} at {} UTC'.format(self.feed['url']['url'], prefix+fp, datetime_retrieved))
         except BaseException as e:
-            data_to_write = f'The feed at {datetimeRetrieved.isoformat()}.'.encode('utf-8')
+            data_to_write = f'The feed at {datetime_retrieved.isoformat()}.'.encode('utf-8')
             fp += '__FEED_NOT_RETRIEVED'
             self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
-            self.print_func('We could not ingest data from {} at {} UTC'.format(self.feed['url']['url'], datetimeRetrieved))
+            self.print_func('We could not ingest data from {} at {} UTC'.format(self.feed['url']['url'], datetime_retrieved))
             raise e
 
         # update last ingest time to Socrata WZDx feed registry
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
         # leaving the block below in case we move the step to this function
 
-        # self.feed['lastingestedtosandbox'] = datetime.now().isoformat()
         # socrata_api = 'https://{domain}/resource/{dataset_id}.json'.format(dataset_id=self.registry_dataset_id, **socrata_params)
         # r = requests.post(socrata_api,
         #                   auth=(socrata_params['username'], socrata_params['password']),
@@ -254,14 +249,14 @@ class WorkZoneSandbox(ITSSandbox):
         """
         ignore_keys = ['timestampEventUpdate']
         # consider status as new if last record was at least one day ago
-        headerFieldName, updateTimeFieldName, activityListFieldName = field_name_tuple
-        time_diff = dateutil.parser.parse(cur_status[headerFieldName][updateTimeFieldName]) - dateutil.parser.parse(prev_prev_status[headerFieldName][updateTimeFieldName])
+        header_field_name, update_time_fieldName, activity_list_fieldName = field_name_tuple
+        time_diff = dateutil.parser.parse(cur_status[header_field_name][update_time_fieldName]) - dateutil.parser.parse(prev_prev_status[header_field_name][update_time_fieldName])
         if time_diff >= timedelta(days=1):
             return False
 
         # if last record is more recent, consider status as new only if any non-ignored field is different
-        cur_status = {k:v for k,v in cur_status[activityListFieldName][0].items() if k not in ignore_keys}
-        prev_status = {k:v for k,v in prev_status[activityListFieldName][0].items() if k not in ignore_keys}
+        cur_status = {k:v for k,v in cur_status[activity_list_fieldName][0].items() if k not in ignore_keys}
+        prev_status = {k:v for k,v in prev_status[activity_list_fieldName][0].items() if k not in ignore_keys}
         return cur_status == prev_status
 
     def parse_to_json(self, data):
@@ -275,13 +270,13 @@ class WorkZoneSandbox(ITSSandbox):
             Dictionary object equivalent of the data.
         """
         try:
-            format = self.feed['format']
+            format_it = self.feed['format_it']
             if type(data) == dict:
                 out = data
-            elif format == 'xml':
+            elif format_it == 'xml':
                 xmldict = xmltodict.parse(data)
                 out = json.loads(json.dumps(xmldict))
-            elif format in ['json', 'geojson']:
+            elif format_it in ['json', 'geojson']:
                 out = json.loads(data)
             else:
                 out = data
@@ -307,33 +302,33 @@ class WorkZoneSandbox(ITSSandbox):
         if self.feed['version'] == '1':
             # spec version 1
             data = data['WZDx']
-            activityListFieldName = 'WorkZoneActivity'
-            headerFieldName = 'Header'
-            updateTimeFieldName = 'timeStampUpdate'
-            feedVersion = data[headerFieldName]['versionNo']
-            generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity]}
+            activity_list_fieldName = 'WorkZoneActivity'
+            header_field_name = 'Header'
+            update_time_fieldName = 'timeStampUpdate'
+            feed_version = data[header_field_name]['versionNo']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_fieldName: [activity]}
         elif self.feed['version'] == '2':
             # spec version 2
-            activityListFieldName = 'features'
-            headerFieldName = 'road_event_feed_info'
-            updateTimeFieldName = 'feed_update_date'
-            feedVersion = data[headerFieldName]['version']
-            generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity], 'type': data['type']}
+            activity_list_fieldName = 'features'
+            header_field_name = 'road_event_feed_info'
+            update_time_fieldName = 'feed_update_date'
+            feed_version = data[header_field_name]['version']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_fieldName: [activity], 'type': data['type']}
         else:
             # spec version 3
-            activityListFieldName = 'features'
-            headerFieldName = 'road_event_feed_info'
-            updateTimeFieldName = 'update_date'
-            feedVersion = data[headerFieldName]['version']
-            generate_out_rec = lambda activity: {headerFieldName: data[headerFieldName], activityListFieldName: [activity], 'type': data['type']}
+            activity_list_fieldName = 'features'
+            header_field_name = 'road_event_feed_info'
+            update_time_fieldName = 'update_date'
+            feed_version = data[header_field_name]['version']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_fieldName: [activity], 'type': data['type']}
 
-        field_name_tuple = (headerFieldName, updateTimeFieldName, activityListFieldName)
+        field_name_tuple = (header_field_name, update_time_fieldName, activity_list_fieldName)
         meta = {
-            'YYYYMM': data[headerFieldName][updateTimeFieldName][:7].replace('-', ''),
-            'version': feedVersion
+            'YYYYMM': data[header_field_name][update_time_fieldName][:7].replace('-', ''),
+            'version': feed_version
         }
         prefix = self.prefix_template.format(**self.feed, year=meta['YYYYMM'][:4], month=meta['YYYYMM'][-2:])
-        new_statuses = {self.generate_fp(status, meta): status for status in data[activityListFieldName]}
+        new_statuses = {self.generate_fp(status, meta): status for status in data[activity_list_fieldName]}
 
         for fp, current_status in new_statuses.items():
             key = prefix+fp

@@ -40,10 +40,10 @@ permissions and limitations under the License.
             body { font: 14px "Lucida Grande", Helvetica, Arial, sans-serif; }
             td { font: 12px "Lucida Grande", Helvetica, Arial, sans-serif; }
         </style>
+        <title>Sandbox</title>
     </head>
 
     <!-- DEBUG: Enable this for red outline on all elements -->
-    <!-- <style media="screen" type="text/css"> * { outline: 1px red solid; } </style> -->
 
     <body>
         <!-- Google Tag Manager (noscript) -->
@@ -114,12 +114,13 @@ permissions and limitations under the License.
                         <!-- Panel including S3 object table -->
                         <div class="panel-body">
                             <table class="table table-bordered table-hover table-striped" id="tb-s3objects">
+                                <caption>S3 Objects table</caption>
                                 <thead>
                                     <tr>
-                                        <th>Object</th>
-                                        <th>Folder</th>
-                                        <th>Last Modified</th>
-                                        <th>Size</th>
+                                        <th scope="col">Object</th>
+                                        <th scope="col">Folder</th>
+                                        <th scope="col">Last Modified</th>
+                                        <th scope="col">Size</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbody-s3objects"></tbody>

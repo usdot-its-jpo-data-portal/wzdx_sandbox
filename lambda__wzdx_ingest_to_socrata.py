@@ -58,7 +58,7 @@ def lambda_handler(event=None, context=None):
         logger.info(f'New draft for dataset {working_id} published.')
     else:
         logger.info(f'No records in feed - will not update Socrata dataset')
-    return
+    
 
 
 if __name__ == '__main__':
