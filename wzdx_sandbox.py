@@ -270,13 +270,13 @@ class WorkZoneSandbox(ITSSandbox):
             Dictionary object equivalent of the data.
         """
         try:
-            format_it = self.feed['format_it']
+            feed_format = self.feed['format']
             if type(data) == dict:
                 out = data
-            elif format_it == 'xml':
+            elif feed_format == 'xml':
                 xmldict = xmltodict.parse(data)
                 out = json.loads(json.dumps(xmldict))
-            elif format_it in ['json', 'geojson']:
+            elif feed_format in ['json', 'geojson']:
                 out = json.loads(data)
             else:
                 out = data
