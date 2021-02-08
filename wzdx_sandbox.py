@@ -282,7 +282,7 @@ class WorkZoneSandbox(ITSSandbox):
             feed_version = data[header_field_name]['version']
             generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
 
-        field_name_tuple = (header_field_name, update_time_field_name, activity_list_fieldName)
+        field_name_tuple = (header_field_name, update_time_field_name, activity_list_field_name)
         
         YYYYMM = data[header_field_name][update_time_field_name][:7].replace('-', '')
         prefix = self.prefix_template.format(**self.feed, year=YYYYMM[:4], month=YYYYMM[-2:])
@@ -298,7 +298,7 @@ class WorkZoneSandbox(ITSSandbox):
                 YYYYMM=YYYYMM,
                 version=feed_version
             ): status 
-            for status in data[activity_list_fieldName]
+            for status in data[activity_list_field_name]
         }
 
         for fp, current_status in new_statuses.items():
