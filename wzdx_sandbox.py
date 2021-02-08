@@ -43,8 +43,8 @@ class ITSSandbox(object):
         if logger:
             self.print_func = logger.info
 
-    def generate_fp(self, template, params):
-        return template.format(**params)
+    def generate_fp(self, template, **kwargs):
+        return template.format(**kwargs)
 
 
 class WorkZoneRawSandbox(ITSSandbox):
@@ -84,25 +84,6 @@ class WorkZoneRawSandbox(ITSSandbox):
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
         # leaving the block below in case we move the step to this function
 
-    def generate_fp(self, datetime_retrieved):
-        """
-        Method to generate file name for the raw archive file based on the template,
-        feed name, and time the feed was retrieved.
-
-        Parameters:
-            datetime_retrieved: datetime object
-
-        Returns:
-            String representing the file name
-        """
-        template = '{feedname}_{datetime_retrieved}'
-        params = {
-            'feedname': self.feed['feedname'],
-            'datetime_retrieved': datetime_retrieved
-        }
-        fp = super(WorkZoneRawSandbox, self).generate_fp(template, params)
-        return fp
-
     def ingest(self):
         """
         Method to ingest the raw feed to the ITS Work Zone Raw Sandbox and trigger
@@ -112,7 +93,11 @@ class WorkZoneRawSandbox(ITSSandbox):
         """
         datetime_retrieved = datetime.now()
         prefix = self.prefix_template.format(**self.feed, year=datetime_retrieved.strftime('%Y'), month=datetime_retrieved.strftime('%m'))
-        fp = self.generate_fp(datetime_retrieved)
+        fp = self.generate_fp(
+            template='{feedname}_{datetime_retrieved}',
+            feedname=self.feed['feedname'],
+            datetime_retrieved=datetime_retrieved
+        )
 
         try:
             r = requests.get(self.feed['url']['url'])
@@ -200,31 +185,6 @@ class WorkZoneSandbox(ITSSandbox):
         self.n_overwrite = 0
         self.n_new_fps = 0
         self.n_skipped = 0
-
-    def generate_fp(self, status, parsed_meta):
-        """
-        Method to generate file name for the file based on the work zone status,
-        and feed metadata.
-
-        Parameters:
-            status: Dictionary object containing one work zone activity status.
-                Must have the following fields: identifier, beginLocation.roadDirection.
-            parsed_meta: Dictionary object containing pre-parsed feed metadata.
-                Must have the following fields: YYYYMM, version
-
-        Returns:
-            String representing the file name
-        """
-        template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
-        params = deepcopy(parsed_meta)
-        if self.feed['version'] == '1':
-            params['identifier'] = status['identifier']
-            params['beginLocation_roadDirection'] = status['beginLocation']['roadDirection']
-        else:
-            params['identifier'] = status['properties']['road_event_id']
-            params['beginLocation_roadDirection'] = status['properties']['direction']
-        fp = super(WorkZoneSandbox, self).generate_fp(template, params)
-        return fp
 
     def cmp_status(self, cur_status, prev_status, prev_prev_status, field_name_tuple):
         """
@@ -323,12 +283,23 @@ class WorkZoneSandbox(ITSSandbox):
             generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
 
         field_name_tuple = (header_field_name, update_time_field_name, activity_list_fieldName)
-        meta = {
-            'YYYYMM': data[header_field_name][update_time_field_name][:7].replace('-', ''),
-            'version': feed_version
+        
+        YYYYMM = data[header_field_name][update_time_field_name][:7].replace('-', '')
+        prefix = self.prefix_template.format(**self.feed, year=YYYYMM[:4], month=YYYYMM[-2:])
+        
+        template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
+        get_identifier = lambda feed_version, status: status['identifier'] if feed_version == '1' else status['properties']['road_event_id']
+        get_begin_road_direction = lambda feed_version, status: status['beginLocation']['roadDirection'] if feed_version == '1' else status['properties']['direction']
+        new_statuses = {
+            self.generate_fp(
+                template, 
+                identifier=get_identifier(feed_version, status),
+                beginLocation_roadDirection=get_begin_road_direction(feed_version, status),
+                YYYYMM=YYYYMM,
+                version=feed_version
+            ): status 
+            for status in data[activity_list_fieldName]
         }
-        prefix = self.prefix_template.format(**self.feed, year=meta['YYYYMM'][:4], month=meta['YYYYMM'][-2:])
-        new_statuses = {self.generate_fp(status, meta): status for status in data[activity_list_fieldName]}
 
         for fp, current_status in new_statuses.items():
             key = prefix+fp
