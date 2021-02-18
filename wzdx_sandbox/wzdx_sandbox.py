@@ -11,7 +11,7 @@ import requests
 import xmltodict
 import traceback
 
-from s3_helper import S3Helper
+from wzdx_sandbox.s3_helper import S3Helper
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
