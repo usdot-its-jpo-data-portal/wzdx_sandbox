@@ -1,6 +1,6 @@
 # wzdx_sandbox
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-its-jpo-data-portal_datahub-metrics-ingest&metric=alert_status)](https://sonarcloud.io/dashboard?id=usdot-its-jpo-data-portal_datahub-metrics-ingest)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=usdot-its-jpo-data-portal_datahub-metrics-ingest&metric=coverage)](https://sonarcloud.io/dashboard?id=usdot-its-jpo-data-portal_datahub-metrics-ingest)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-its-jpo-data-portal_wzdx_sandbox&metric=alert_status)](https://sonarcloud.io/dashboard?id=usdot-its-jpo-data-portal_wzdx_sandbox)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=usdot-its-jpo-data-portal_wzdx_sandbox&metric=coverage)](https://sonarcloud.io/dashboard?id=usdot-its-jpo-data-portal_wzdx_sandbox)
 
 
 This repository includes code for ingesting [Work Zone Data Exchange (WZDx)](https://github.com/usdot-jpo-ode/jpo-wzdx) feed data into ITS DataHub's Work Zone Data Archives. Specifically, this includes:
