@@ -7,7 +7,7 @@ import logging
 import os
 import traceback
 
-from wzdx_sandbox import WorkZoneSandbox
+from wzdx_sandbox.wzdx_sandbox import WorkZoneSandbox
 
 
 logger = logging.getLogger()

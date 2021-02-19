@@ -7,7 +7,7 @@ import logging
 import os
 import traceback
 
-from wzdx_sandbox import WorkZoneSandbox
+from wzdx_sandbox.wzdx_sandbox import WorkZoneSandbox
 from sandbox_exporter.flattener import load_flattener
 from sandbox_exporter.socrata_util import SocrataDataset
 from sandbox_exporter.flattener_wzdx import WzdxV2Flattener, WzdxV3Flattener
