@@ -1,4 +1,3 @@
 requests==2.20.0
 xmltodict==0.11.0
 git+git://github.com/usdot-its-jpo-data-portal/sandbox_exporter@master#egg=sandbox_exporter
-git+git://github.com/usdot-its-jpo-data-portal/s3select@make-importable#egg=s3select
