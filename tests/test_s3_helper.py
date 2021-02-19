@@ -1,5 +1,4 @@
 import unittest
-import responses
 import os
 
 from wzdx_sandbox.s3_helper import S3Helper
