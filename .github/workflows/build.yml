@@ -26,7 +26,6 @@ jobs:
           - name: Install dependencies
             run: |
               pip install "pytest<5"
-              pip install .
               pip install coverage
               pip install -r lambda__wzdx_ingest_to_lake__requirements.txt
               pip install -r lambda__wzdx_ingest_to_archive__requirements.txt
