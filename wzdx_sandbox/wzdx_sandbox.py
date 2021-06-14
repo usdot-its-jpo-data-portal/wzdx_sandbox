@@ -275,7 +275,7 @@ class WorkZoneSandbox(ITSSandbox):
             feed_version = data[header_field_name]['version']
             generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
         else:
-            # spec version 3
+            # spec version 3, 3.1
             activity_list_field_name = 'features'
             header_field_name = 'road_event_feed_info'
             update_time_field_name = 'update_date'
@@ -288,8 +288,8 @@ class WorkZoneSandbox(ITSSandbox):
         prefix = self.prefix_template.format(**self.feed, year=YYYYMM[:4], month=YYYYMM[-2:])
         
         template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
-        get_identifier = lambda feed_version, status: status['identifier'] if feed_version == '1' else status['properties']['road_event_id']
-        get_begin_road_direction = lambda feed_version, status: status['beginLocation']['roadDirection'] if feed_version == '1' else status['properties']['direction']
+        get_identifier = lambda feed_version, status: status['identifier'] if feed_version[0] == '1' else status['properties'].get('road_event_id') or status.get('id')
+        get_begin_road_direction = lambda feed_version, status: status['beginLocation']['roadDirection'] if feed_version[0] == '1' else status['properties']['direction']
         new_statuses = {
             self.generate_fp(
                 template, 
