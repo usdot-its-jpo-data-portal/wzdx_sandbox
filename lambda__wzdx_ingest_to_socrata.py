@@ -32,7 +32,7 @@ def lambda_handler(event=None, context=None):
     if int(event['feed']['version']) == 2:
         flattener_class = WzdxV2Flattener
         current_updated_time = data['road_event_feed_info']['feed_update_date'][:19]
-    elif int(event['feed']['version']) == 3:
+    elif int(event['feed']['version'][0]) == 3:
         flattener_class = WzdxV3Flattener
         current_updated_time = data['road_event_feed_info']['update_date'][:19]
     flattener = flattener_class()
