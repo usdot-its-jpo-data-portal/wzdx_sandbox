@@ -186,68 +186,6 @@ class WorkZoneSandbox(ITSSandbox):
         self.n_new_fps = 0
         self.n_skipped = 0
 
-    def cmp_status(self, cur_status, prev_status, prev_prev_status, field_name_tuple):
-        """
-        Method to check 1) if the current status is retrieved less than one day
-        ago compared to the status prior to the previous status, and 2) if the
-        current status matches the previous status for all fields except for
-        the fields ignored (timestampEventUpdate). Will return false (no overwrite)
-        if either condition is false.
-
-        Parameters:
-            cur_status: Dictionary object of current work zone activity status
-                being compared/ingested.
-            prev_status: Dictionary object of previous work zone activity status
-                from the same feed and for the same work zone that had been ingested.
-            prev_prev_status: Dictionary object of status prior to teh previous status,
-                also from the same feed and for the same work zone that had been ingested.
-            field_name_tuple: Tuple consisting of field names for feed header (feed
-                metadata), last updated timestamp, and activity list, in that order.
-        Returns:
-            Boolean value showing whether or not the current status should overwrite
-            the previous status.
-        """
-        ignore_keys = ['timestampEventUpdate']
-        # consider status as new if last record was at least one day ago
-        header_field_name, update_time_field_name, activity_list_field_name = field_name_tuple
-        time_diff = dateutil.parser.parse(cur_status[header_field_name][update_time_field_name]) - dateutil.parser.parse(prev_prev_status[header_field_name][update_time_field_name])
-        if time_diff >= timedelta(days=1):
-            return False
-
-        # if last record is more recent, consider status as new only if any non-ignored field is different
-        cur_status = {k:v for k,v in cur_status[activity_list_field_name][0].items() if k not in ignore_keys}
-        prev_status = {k:v for k,v in prev_status[activity_list_field_name][0].items() if k not in ignore_keys}
-        return cur_status == prev_status
-
-    def parse_to_json(self, data):
-        """
-        Method to parse the string data received to json.
-
-        Parameters:
-            data: Raw string data from feed archive sandbox. Could be stringified
-                JSON object or XML.
-        Returns:
-            Dictionary object equivalent of the data.
-        """
-        try:
-            feed_format = self.feed['format']
-            if type(data) == dict:
-                out = data
-            elif feed_format == 'xml':
-                xmldict = xmltodict.parse(data)
-                out = json.loads(json.dumps(xmldict))
-            elif feed_format in ['json', 'geojson']:
-                out = json.loads(data)
-            else:
-                out = data
-            return out
-        except BaseException as e:
-            self.print_func('ERROR WITH FEED')
-            self.print_func('FEED: {}'.format(self.feed))
-            self.print_func('DATA: {}'.format(data))
-            self.print_func(traceback.format_exc())
-            raise e
-
     def ingest(self, data):
         """
         Method to ingest and parse the raw feed from the ITS Work Zone Raw Sandbox
@@ -258,48 +196,7 @@ class WorkZoneSandbox(ITSSandbox):
                 JSON object or XML.
         """
         data = self.parse_to_json(data)
-        # semi-parse feed
-        if self.feed['version'] == '1':
-            # spec version 1
-            data = data['WZDx']
-            activity_list_field_name = 'WorkZoneActivity'
-            header_field_name = 'Header'
-            update_time_field_name = 'timeStampUpdate'
-            feed_version = data[header_field_name]['versionNo']
-            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity]}
-        elif self.feed['version'] == '2':
-            # spec version 2
-            activity_list_field_name = 'features'
-            header_field_name = 'road_event_feed_info'
-            update_time_field_name = 'feed_update_date'
-            feed_version = data[header_field_name]['version']
-            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
-        else:
-            # spec version 3, 3.1
-            activity_list_field_name = 'features'
-            header_field_name = 'road_event_feed_info'
-            update_time_field_name = 'update_date'
-            feed_version = data[header_field_name]['version']
-            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
-
-        field_name_tuple = (header_field_name, update_time_field_name, activity_list_field_name)
-        
-        YYYYMM = data[header_field_name][update_time_field_name][:7].replace('-', '')
-        prefix = self.prefix_template.format(**self.feed, year=YYYYMM[:4], month=YYYYMM[-2:])
-        
-        template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
-        get_identifier = lambda feed_version, status: status['identifier'] if feed_version[0] == '1' else status['properties'].get('road_event_id') or status.get('id')
-        get_begin_road_direction = lambda feed_version, status: status['beginLocation']['roadDirection'] if feed_version[0] == '1' else status['properties']['direction']
-        new_statuses = {
-            self.generate_fp(
-                template, 
-                identifier=get_identifier(feed_version, status),
-                beginLocation_roadDirection=get_begin_road_direction(feed_version, status),
-                YYYYMM=YYYYMM,
-                version=feed_version
-            ): status 
-            for status in data[activity_list_field_name]
-        }
+        new_statuses, generate_out_rec, prefix, field_name_tuple = self.generate_fp_status_dict(data)
 
         for fp, current_status in new_statuses.items():
             key = prefix+fp
@@ -335,3 +232,119 @@ class WorkZoneSandbox(ITSSandbox):
 
         self.print_func('{} status found in {} feed: {} skipped, {} overwrites, {} updates, {} new files'.format(
         len(new_statuses), self.feed['feedname'], self.n_skipped, self.n_overwrite, self.n_new_status, self.n_new_fps))
+
+    def parse_to_json(self, data):
+        """
+        Method to parse the string data received to json.
+
+        Parameters:
+            data: Raw string data from feed archive sandbox. Could be stringified
+                JSON object or XML.
+        Returns:
+            Dictionary object equivalent of the data.
+        """
+        try:
+            feed_format = self.feed['format']
+            if type(data) == dict:
+                out = data
+            elif feed_format == 'xml':
+                xmldict = xmltodict.parse(data)
+                out = json.loads(json.dumps(xmldict))
+            elif feed_format in ['json', 'geojson']:
+                out = json.loads(data)
+            else:
+                out = data
+            return out
+        except BaseException as e:
+            self.print_func('ERROR WITH FEED')
+            self.print_func('FEED: {}'.format(self.feed))
+            self.print_func('DATA: {}'.format(data))
+            self.print_func(traceback.format_exc())
+            raise e
+            
+    def generate_fp_status_dict(self, data):
+        if self.feed['version'] == '1':
+            # spec version 1
+            data = data['WZDx']
+            activity_list_field_name = 'WorkZoneActivity'
+            header_field_name = 'Header'
+            update_time_field_name = 'timeStampUpdate'
+            feed_version = data[header_field_name]['versionNo']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity]}
+        elif self.feed['version'] == '2':
+            # spec version 2
+            activity_list_field_name = 'features'
+            header_field_name = 'road_event_feed_info'
+            update_time_field_name = 'feed_update_date'
+            feed_version = data[header_field_name]['version']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
+        else:
+            # spec version 3, 3.1
+            activity_list_field_name = 'features'
+            header_field_name = 'road_event_feed_info'
+            update_time_field_name = 'update_date'
+            feed_version = data[header_field_name]['version']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
+
+        field_name_tuple = (header_field_name, update_time_field_name, activity_list_field_name)
+        
+        YYYYMM = data[header_field_name][update_time_field_name][:7].replace('-', '')
+        prefix = self.prefix_template.format(**self.feed, year=YYYYMM[:4], month=YYYYMM[-2:])
+        
+        template = '{identifier}_{beginLocation_roadDirection}_{YYYYMM}_v{version}'
+        new_statuses = {
+            self.generate_fp(
+                template, 
+                identifier=self.get_identifier_from_status(feed_version, status),
+                beginLocation_roadDirection=self.get_road_direction_from_status(feed_version, status),
+                YYYYMM=YYYYMM,
+                version=feed_version
+            ): status 
+            for status in data[activity_list_field_name]
+        }
+        return new_statuses, generate_out_rec, prefix, field_name_tuple
+    
+    def get_identifier_from_status(self, feed_version, status):
+        if feed_version[0] == '1':
+            return status['identifier']
+        else:
+            return status['properties'].get('road_event_id') or status.get('id')
+    
+    def get_road_direction_from_status(self, feed_version, status):
+        if feed_version[0] == '1':
+            return status['beginLocation']['roadDirection']
+        else:
+            return status['properties']['direction']
+
+    def cmp_status(self, cur_status, prev_status, prev_prev_status, field_name_tuple):
+        """
+        Method to check 1) if the current status is retrieved less than one day
+        ago compared to the status prior to the previous status, and 2) if the
+        current status matches the previous status for all fields except for
+        the fields ignored (timestampEventUpdate). Will return false (no overwrite)
+        if either condition is false.
+
+        Parameters:
+            cur_status: Dictionary object of current work zone activity status
+                being compared/ingested.
+            prev_status: Dictionary object of previous work zone activity status
+                from the same feed and for the same work zone that had been ingested.
+            prev_prev_status: Dictionary object of status prior to teh previous status,
+                also from the same feed and for the same work zone that had been ingested.
+            field_name_tuple: Tuple consisting of field names for feed header (feed
+                metadata), last updated timestamp, and activity list, in that order.
+        Returns:
+            Boolean value showing whether or not the current status should overwrite
+            the previous status.
+        """
+        ignore_keys = ['timestampEventUpdate']
+        # consider status as new if last record was at least one day ago
+        header_field_name, update_time_field_name, activity_list_field_name = field_name_tuple
+        time_diff = dateutil.parser.parse(cur_status[header_field_name][update_time_field_name]) - dateutil.parser.parse(prev_prev_status[header_field_name][update_time_field_name])
+        if time_diff >= timedelta(days=1):
+            return False
+
+        # if last record is more recent, consider status as new only if any non-ignored field is different
+        cur_status = {k:v for k,v in cur_status[activity_list_field_name][0].items() if k not in ignore_keys}
+        prev_status = {k:v for k,v in prev_status[activity_list_field_name][0].items() if k not in ignore_keys}
+        return cur_status == prev_status
