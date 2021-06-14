@@ -22,10 +22,14 @@ if None in [BUCKET]:
 
 def lambda_handler(event=None, context=None):
     """AWS Lambda handler. """
-    wzdx_sandbox = WorkZoneSandbox(feed=event['feed'], bucket=BUCKET, logger=logger)
-    datastream = wzdx_sandbox.s3helper.get_data_stream(event['bucket'], event['key'])
-    wzdx_sandbox.ingest(data=datastream.data.decode('utf-8'))
-
+    try:
+        wzdx_sandbox = WorkZoneSandbox(feed=event['feed'], bucket=BUCKET, logger=logger)
+        datastream = wzdx_sandbox.s3helper.get_data_stream(event['bucket'], event['key'])
+        wzdx_sandbox.ingest(data=datastream.data.decode('utf-8'))
+    except:
+        print(traceback.format_exc())
+        print(event)
+        raise
 
 if __name__ == '__main__':
     lambda_handler()
