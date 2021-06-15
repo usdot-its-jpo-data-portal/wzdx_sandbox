@@ -25,12 +25,16 @@ if None in [BUCKET, LAMBDA_TO_TRIGGER]:
 
 def lambda_handler(event=None, context=None):
     """AWS Lambda handler. """
-    wzdx_sandbox = WorkZoneRawSandbox(feed=event['feed'], bucket=BUCKET,
-                    lambda_to_trigger=LAMBDA_TO_TRIGGER,
-                    socrata_lambda_to_trigger=SOCRATA_LAMBDA_TO_TRIGGER,
-                    logger=logger)
-    wzdx_sandbox.ingest()
-
+    try:
+        wzdx_sandbox = WorkZoneRawSandbox(feed=event['feed'], bucket=BUCKET,
+                        lambda_to_trigger=LAMBDA_TO_TRIGGER,
+                        socrata_lambda_to_trigger=SOCRATA_LAMBDA_TO_TRIGGER,
+                        logger=logger)
+        wzdx_sandbox.ingest()
+    except:
+        print(traceback.format_exc())
+        print(event)
+        raise
 
 if __name__ == '__main__':
     lambda_handler()
