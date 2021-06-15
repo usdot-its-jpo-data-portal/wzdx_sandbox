@@ -53,7 +53,7 @@ class aws_helper(object):
         except:
             self.print_func(traceback.format_exc())
             self.print_func('Exiting. Unable to establish AWS session with the following profile name: {}'.format(self.aws_profile))
-            exit()
+            raise
         return session
 
 
@@ -141,6 +141,7 @@ class S3Helper(aws_helper):
                 self.print_func(traceback.format_exc())
                 self.print_func('Invalid json line. Skipping: {}'.format(line))
                 self.err_lines.append(line)
+                raise
             line = data_stream.readline()
 
     def write_recs(self, recs, bucket, key):
