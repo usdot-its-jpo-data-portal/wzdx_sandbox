@@ -111,16 +111,6 @@ class WorkZoneRawSandbox(ITSSandbox):
             self.print_func('We could not ingest data from {} at {} UTC'.format(self.feed['url']['url'], datetime_retrieved))
             raise e
 
-        # update last ingest time to Socrata WZDx feed registry
-        # this is currently done in the previous lambda function "wzdx_trigger_ingest".
-        # leaving the block below in case we move the step to this function
-
-        # socrata_api = 'https://{domain}/resource/{dataset_id}.json'.format(dataset_id=self.registry_dataset_id, **socrata_params)
-        # r = requests.post(socrata_api,
-        #                   auth=(socrata_params['username'], socrata_params['password']),
-        #                   params={'$$app_token':socrata_params['app_token']},
-        #                   data=json.dumps([self.feed]))
-
         # trigger semi-parse ingest
         if self.feed['pipedtosandbox'] == True:
             self.print_func('Trigger {} for {}'.format(self.lambda_to_trigger, self.feed['feedname']))
@@ -202,32 +192,10 @@ class WorkZoneSandbox(ITSSandbox):
             key = prefix+fp
             out_rec = generate_out_rec(current_status)
             if self.s3helper.path_exists(self.bucket, key):
-                # if not first status for the workzone for the month
-                datastream = self.s3helper.get_data_stream(self.bucket, key)
-                recs = [rec for rec in self.s3helper.newline_json_rec_generator(datastream)]
-                if out_rec == recs[-1]:
-                    # skip if completely the same as previous record
-                    self.print_func('Skipped')
-                    self.n_skipped += 1
-                    continue
-
-                if len(recs) == 1:
-                    # if only one record so far, automatically archive first record and save current record
-                    out_recs = recs + [out_rec]
-                    self.n_new_status += 1
-                    self.print_func('Only 1 rec and not the same')
-                else:
-                    # if more than one record, compare current record with previous and previous previous record
-                    if self.cmp_status(out_rec, recs[-1], recs[-2], field_name_tuple):
-                        out_recs = recs[:-1] + [out_rec]
-                        self.n_overwrite += 1
-                    else:
-                        out_recs = recs + [out_rec]
-                        self.n_new_status += 1
+                out_recs = self.combine_with_existing_recs(key, out_rec, field_name_tuple)
             else:
                 out_recs = [out_rec]
                 self.n_new_fps += 1
-
             self.s3helper.write_recs(out_recs, self.bucket, key)
 
         self.print_func('{} status found in {} feed: {} skipped, {} overwrites, {} updates, {} new files'.format(
@@ -315,6 +283,30 @@ class WorkZoneSandbox(ITSSandbox):
             return status['beginLocation']['roadDirection']
         else:
             return status['properties']['direction']
+
+    def combine_with_existing_recs(self, key, out_rec, field_name_tuple):
+        # if not first status for the workzone for the month
+        datastream = self.s3helper.get_data_stream(self.bucket, key)
+        recs = [rec for rec in self.s3helper.newline_json_rec_generator(datastream)]
+        if out_rec == recs[-1]:
+            # skip if completely the same as previous record
+            self.print_func('Skipped')
+            self.n_skipped += 1
+            continue
+        if len(recs) == 1:
+            # if only one record so far, automatically archive first record and save current record
+            out_recs = recs + [out_rec]
+            self.n_new_status += 1
+            self.print_func('Only 1 rec and not the same')
+        else:
+            # if more than one record, compare current record with previous and previous previous record
+            if self.cmp_status(out_rec, recs[-1], recs[-2], field_name_tuple):
+                out_recs = recs[:-1] + [out_rec]
+                self.n_overwrite += 1
+            else:
+                out_recs = recs + [out_rec]
+                self.n_new_status += 1
+        return out_recs
 
     def cmp_status(self, cur_status, prev_status, prev_prev_status, field_name_tuple):
         """
