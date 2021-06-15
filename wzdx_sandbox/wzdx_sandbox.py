@@ -193,6 +193,8 @@ class WorkZoneSandbox(ITSSandbox):
             out_rec = generate_out_rec(current_status)
             if self.s3helper.path_exists(self.bucket, key):
                 out_recs = self.combine_with_existing_recs(key, out_rec, field_name_tuple)
+                if out_recs is None:
+                    continue
             else:
                 out_recs = [out_rec]
                 self.n_new_fps += 1
@@ -292,7 +294,7 @@ class WorkZoneSandbox(ITSSandbox):
             # skip if completely the same as previous record
             self.print_func('Skipped')
             self.n_skipped += 1
-            continue
+            return None
         if len(recs) == 1:
             # if only one record so far, automatically archive first record and save current record
             out_recs = recs + [out_rec]
