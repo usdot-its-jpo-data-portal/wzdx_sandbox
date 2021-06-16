@@ -15,3 +15,4 @@ class TestS3Helper(unittest.TestCase):
         except:
             self.assertIsNone(test_s3_helper)
             raise
+        

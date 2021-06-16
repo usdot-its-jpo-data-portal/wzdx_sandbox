@@ -45,3 +45,4 @@ jobs:
                 -Dsonar.coverage.exclusions=test_*.py
                 -Dsonar.verbose=true
                 -Dsonar.language=py
+                
