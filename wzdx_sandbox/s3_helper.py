@@ -9,14 +9,14 @@ import logging
 import traceback
 
 
-class AWS_helper(object):
+class aws_helper(object):
     """
     Helper class for connecting to AWS.
 
     """
     def __init__(self, aws_profile=None, logger=False):
         """
-        Initialization function of the AWS_helper class.
+        Initialization function of the aws_helper class.
 
         Parameters:
             aws_profile: Optional string name of your AWS profile, as set up in
@@ -53,11 +53,11 @@ class AWS_helper(object):
         except:
             self.print_func(traceback.format_exc())
             self.print_func('Exiting. Unable to establish AWS session with the following profile name: {}'.format(self.aws_profile))
-            exit()
+            raise
         return session
 
 
-class S3Helper(AWS_helper):
+class S3Helper(aws_helper):
     """
     Helper class for connecting to and working with AWS S3.
 
@@ -141,6 +141,7 @@ class S3Helper(AWS_helper):
                 self.print_func(traceback.format_exc())
                 self.print_func('Invalid json line. Skipping: {}'.format(line))
                 self.err_lines.append(line)
+                raise
             line = data_stream.readline()
 
     def write_recs(self, recs, bucket, key):

@@ -7,7 +7,7 @@ import logging
 import os
 import traceback
 
-from wzdx_sandbox import WorkZoneSandbox
+from wzdx_sandbox.wzdx_sandbox import WorkZoneSandbox
 from sandbox_exporter.flattener import load_flattener
 from sandbox_exporter.socrata_util import SocrataDataset
 from sandbox_exporter.flattener_wzdx import WzdxV2Flattener, WzdxV3Flattener
@@ -21,7 +21,14 @@ SOCRATA_PARAMS = json.loads(os.environ.get('SOCRATA_PARAMS', ''))
 
 def lambda_handler(event=None, context=None):
     """AWS Lambda handler. """
+    try:
+        main(event, context)
+    except:
+        print(traceback.format_exc())
+        print(event)
+        raise
 
+def main(event, context):
     # load and parse data
     wzdx_sandbox = WorkZoneSandbox(feed=event['feed'], bucket=None, logger=logger)
     datastream = wzdx_sandbox.s3helper.get_data_stream(event['bucket'], event['key'])
@@ -29,10 +36,10 @@ def lambda_handler(event=None, context=None):
 
     # load and initialize data flattener based on schema version
     # flattener_class = load_flattener('wzdx/V{}'.format(event['feed']['version']))
-    if int(event['feed']['version']) == 2:
+    if event['feed']['version'][0] == '2':
         flattener_class = WzdxV2Flattener
         current_updated_time = data['road_event_feed_info']['feed_update_date'][:19]
-    elif int(event['feed']['version']) == 3:
+    elif event['feed']['version'][0] == '3':
         flattener_class = WzdxV3Flattener
         current_updated_time = data['road_event_feed_info']['update_date'][:19]
     flattener = flattener_class()
@@ -58,8 +65,7 @@ def lambda_handler(event=None, context=None):
         logger.info(f'New draft for dataset {working_id} published.')
     else:
         logger.info(f'No records in feed - will not update Socrata dataset')
-    return
-
+    
 
 if __name__ == '__main__':
     lambda_handler()
