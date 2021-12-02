@@ -4,8 +4,8 @@
 
 
 This repository includes code for ingesting [Work Zone Data Exchange (WZDx)](https://github.com/usdot-jpo-ode/jpo-wzdx) feed data into ITS DataHub's Work Zone Data Archives. Specifically, this includes:
-- Lambda function `wzdx_ingest_to_archive`. Triggered by `wzdx_trigger_ingest` lambda function from [wzdx_registry](https://github.com/usdot-its-jpo-data-portal/wzdx_registry) GitHub repository, this lambda uses the feed metadata passed from `wzdx_trigger_ingest` from [WZDx Feed Registry](https://datahub.transportation.gov/d/69qe-yiui) to ingest a raw copy of a WZDx feed into the [raw data sandbox](http://usdot-its-workzone-raw-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive and triggers `wzdx_ingest_to_lake` and `wzdx_ingest_to_socrata` lambda functions based on the feed's metadata.
-- Lambda function `wzdx_ingest_to_lake`. This lambda function ingests a semi-processed copy of a WZDx feed into the [semi-processed data sandbox](http://usdot-its-workzone-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive.
+- Lambda function `wzdx_ingest_to_archive`. Triggered by `wzdx_trigger_ingest` lambda function from [wzdx_registry](https://github.com/usdot-its-jpo-data-portal/wzdx_registry) GitHub repository, this lambda uses the feed metadata passed from `wzdx_trigger_ingest` from [WZDx Feed Registry](https://datahub.transportation.gov/d/69qe-yiui) to ingest a raw copy of a WZDx feed into the [raw data sandbox](http://usdot-its-workzone-raw-publicdata.s3.amazonaws.com/index.html) in the Work Zone Data Archive and triggers `wzdx_ingest_to_lake` and `wzdx_ingest_to_socrata` lambda functions based on the feed's metadata.
+- Lambda function `wzdx_ingest_to_lake`. This lambda function ingests a semi-processed copy of a WZDx feed into the [semi-processed data sandbox](http://usdot-its-workzone-publicdata.s3.amazonaws.com/index.html) in the Work Zone Data Archive.
 - Lambda function `wzdx_ingest_to_socrata`. This lambda function ingests a transformed tabular copy of a WZDx feed into a integrated Socrata dataset on data.transportation.gov that is associated with the feed.
 
 For more information on ITS Sandbox data, please refer to the [ITS Sandbox README page](https://github.com/usdot-its-jpo-data-portal/sandbox). For an overview on WZDx resources on ITS DataHub, please refer to the [WZDx data story](https://datahub.transportation.gov/d/jixs-h7uw).
@@ -56,7 +56,7 @@ If you plan to deploy the script on your local machine, you need the following:
 		- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest_to_archive.zip` file as your "Function Package."
 		- In "Environment variables" section, set the following:
 		  - `BUCKET`: the destination s3 bucket where the WZDx feed should be archived to.
-			  - default set as: usdot-its-workzone-raw-public-data
+			  - default set as: usdot-its-workzone-raw-publicdata
       - `LAMBDA_TO_TRIGGER`: the name of the lambda for the `wzdx_ingest_to_lake` function or some other lambda that this function should trigger.
 		    - default set as: wzdx_ingest_to_lake
 			- `SOCRATA_LAMBDA_TO_TRIGGER`: the name of the lambda for the `wzdx_ingest_to_socrata` function or some other lambda that this function should trigger.
@@ -66,7 +66,7 @@ If you plan to deploy the script on your local machine, you need the following:
 		- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest_to_lake.zip` file as your "Function Package."
 		- In "Environment variables" section, set the following:
 			- `BUCKET`: the destination s3 bucket where the WZDx feed should be archived to.
-				- default set as: usdot-its-workzone-public-data
+				- default set as: usdot-its-workzone-publicdata
 		- In "Basics settings" section, set adequate Memory and Timeout values. Memory of 1664 MB and Timeout value of 10 minutes should be plenty.
 	- For the `wzdx_ingest_to_socrata` function:
 		- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest_to_socrata.zip` file as your "Function Package."
