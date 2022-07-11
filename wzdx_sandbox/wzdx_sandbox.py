@@ -283,13 +283,15 @@ class WorkZoneSandbox(ITSSandbox):
     def get_road_direction_from_status(self, feed_version, status):
         if feed_version[0] == '1':
             return status['beginLocation']['roadDirection']
+        elif feed_version[0] == '4':
+            return status['properties']['core_details']['direction']
         else:
             return status['properties']['direction']
 
     def combine_with_existing_recs(self, key, out_rec, field_name_tuple):
         # if not first status for the workzone for the month
         datastream = self.s3helper.get_data_stream(self.bucket, key)
-        recs = [rec for rec in self.s3helper.newline_json_rec_generator(datastream)]
+        recs = [json.loads(rec) for rec in datastream.iter_lines()]
         if out_rec == recs[-1]:
             # skip if completely the same as previous record
             self.print_func('Skipped')

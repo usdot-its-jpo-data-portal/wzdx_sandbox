@@ -25,7 +25,7 @@ def lambda_handler(event=None, context=None):
     try:
         wzdx_sandbox = WorkZoneSandbox(feed=event['feed'], bucket=BUCKET, logger=logger)
         datastream = wzdx_sandbox.s3helper.get_data_stream(event['bucket'], event['key'])
-        wzdx_sandbox.ingest(data=datastream.data.decode('utf-8'))
+        wzdx_sandbox.ingest(data=datastream._raw_stream.data.decode('utf-8'))
     except:
         print(traceback.format_exc())
         print(event)
