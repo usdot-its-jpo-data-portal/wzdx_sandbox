@@ -10,7 +10,7 @@ import traceback
 from wzdx_sandbox.wzdx_sandbox import WorkZoneSandbox
 from sandbox_exporter.flattener import load_flattener
 from sandbox_exporter.socrata_util import SocrataDataset
-from sandbox_exporter.flattener_wzdx import WzdxV2Flattener, WzdxV3Flattener
+from sandbox_exporter.flattener_wzdx import WzdxV2Flattener, WzdxV3Flattener, WzdxV4Flattener
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
@@ -42,6 +42,12 @@ def main(event, context):
     elif event['feed']['version'][0] == '3':
         flattener_class = WzdxV3Flattener
         current_updated_time = data['road_event_feed_info']['update_date'][:19]
+    elif event['feed']['version'][0] == '4':
+        flattener_class = WzdxV4Flattener
+        try:
+            current_updated_time = data['road_event_feed_info']['update_date'][:19]
+        except KeyError:
+            current_updated_time = data['feed_info']['update_date'][:19]
     flattener = flattener_class()
 
     # check if socrata data is stale
@@ -50,7 +56,10 @@ def main(event, context):
     dataset = SocrataDataset(dataset_id=dataset_id, socrata_params=SOCRATA_PARAMS)
     sample_current_records = dataset.client.get(dataset_id, limit=1)
     if sample_current_records:
-        last_updated_time = sample_current_records[0]['feed_update_date'][:19]
+        if event['feed']['version'][0] == '2':
+            last_updated_time = sample_current_records[0]['feed_update_date'][:19]
+        elif event['feed']['version'][0] >= '3':
+            last_updated_time = sample_current_records[0]['update_date'][:19]
         if not current_updated_time > last_updated_time:
             logger.info(f'No update needed - feed has not been updated since {last_updated_time}')
             return

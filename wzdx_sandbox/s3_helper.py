@@ -91,9 +91,13 @@ class S3Helper(aws_helper):
             Boolean (True/False)
         """
         try:
-            self.client.get_object(Bucket=bucket, Key=path)
+            self.client.head_object(Bucket=bucket, Key=path)
             return True
         except self.client.exceptions.NoSuchKey:
+            self.print_func("NoSuchKey error caught, path does not exist.")
+            return False
+        except botocore.exceptions.ClientError:
+            self.print_func("ClientError caught, assuming path does not exist.")
             return False
 
     def get_data_stream(self, bucket, key):
@@ -112,7 +116,7 @@ class S3Helper(aws_helper):
             gzipped = GzipFile(None, 'rb', fileobj=obj['Body'])
             data = TextIOWrapper(gzipped)
         else:
-            data = obj['Body']._raw_stream
+            data = obj['Body']
         return data
 
     def newline_json_rec_generator(self, data_stream):
