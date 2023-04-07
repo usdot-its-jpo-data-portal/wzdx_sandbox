@@ -4,9 +4,10 @@
 
 
 This repository includes code for ingesting [Work Zone Data Exchange (WZDx)](https://github.com/usdot-jpo-ode/jpo-wzdx) feed data into ITS DataHub's Work Zone Data Archives. Specifically, this includes:
-- Lambda function `wzdx_ingest_to_archive`. Triggered by `wzdx_trigger_ingest` lambda function from [wzdx_registry](https://github.com/usdot-its-jpo-data-portal/wzdx_registry) GitHub repository, this lambda uses the feed metadata passed from `wzdx_trigger_ingest` from [WZDx Feed Registry](https://datahub.transportation.gov/d/69qe-yiui) to ingest a raw copy of a WZDx feed into the [raw data sandbox](http://usdot-its-workzone-raw-publicdata.s3.amazonaws.com/index.html) in the Work Zone Data Archive and triggers `wzdx_ingest_to_lake` and `wzdx_ingest_to_socrata` lambda functions based on the feed's metadata.
-- Lambda function `wzdx_ingest_to_lake`. This lambda function ingests a semi-processed copy of a WZDx feed into the [semi-processed data sandbox](http://usdot-its-workzone-publicdata.s3.amazonaws.com/index.html) in the Work Zone Data Archive.
+- Lambda function `wzdx_ingest_to_archive`. Triggered by `wzdx_trigger_ingest` lambda function from [wzdx_registry](https://github.com/usdot-its-jpo-data-portal/wzdx_registry) GitHub repository, this lambda uses the feed metadata passed from `wzdx_trigger_ingest` from [WZDx Feed Registry](https://datahub.transportation.gov/d/69qe-yiui) to ingest a raw copy of a WZDx feed into the [raw data sandbox](http://usdot-its-workzone-raw-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive and triggers `wzdx_ingest_to_lake` and `wzdx_ingest_to_socrata` lambda functions based on the feed's metadata.
+- Lambda function `wzdx_ingest_to_lake`. This lambda function ingests a semi-processed copy of a WZDx feed into the [semi-processed data sandbox](http://usdot-its-workzone-public-data.s3.amazonaws.com/index.html) in the Work Zone Data Archive.
 - Lambda function `wzdx_ingest_to_socrata`. This lambda function ingests a transformed tabular copy of a WZDx feed into a integrated Socrata dataset on data.transportation.gov that is associated with the feed.
+- Landing page for the Work Zone Data Archive S3 explorer sites.
 
 For more information on ITS Sandbox data, please refer to the [ITS Sandbox README page](https://github.com/usdot-its-jpo-data-portal/sandbox). For an overview on WZDx resources on ITS DataHub, please refer to the [WZDx data story](https://datahub.transportation.gov/d/jixs-h7uw).
 
@@ -43,6 +44,7 @@ If you plan to deploy the script on your local machine, you need the following:
 2. Navigate into the repository folder by entering `cd wzdx_sandbox` in command line.
 3. Install the required packages by running `pip install -r lambda__wzdx_ingest_to_lake__requirements.txt` and `pip install -r lambda__wzdx_ingest_to_socrata__requirements.txt`.
 
+
 ## Deployment
 
 ### Deployment on AWS Lambda
@@ -56,7 +58,7 @@ If you plan to deploy the script on your local machine, you need the following:
 		- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest_to_archive.zip` file as your "Function Package."
 		- In "Environment variables" section, set the following:
 		  - `BUCKET`: the destination s3 bucket where the WZDx feed should be archived to.
-			  - default set as: usdot-its-workzone-raw-publicdata
+			  - default set as: usdot-its-workzone-raw-public-data
       - `LAMBDA_TO_TRIGGER`: the name of the lambda for the `wzdx_ingest_to_lake` function or some other lambda that this function should trigger.
 		    - default set as: wzdx_ingest_to_lake
 			- `SOCRATA_LAMBDA_TO_TRIGGER`: the name of the lambda for the `wzdx_ingest_to_socrata` function or some other lambda that this function should trigger.
@@ -66,7 +68,7 @@ If you plan to deploy the script on your local machine, you need the following:
 		- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest_to_lake.zip` file as your "Function Package."
 		- In "Environment variables" section, set the following:
 			- `BUCKET`: the destination s3 bucket where the WZDx feed should be archived to.
-				- default set as: usdot-its-workzone-publicdata
+				- default set as: usdot-its-workzone-public-data
 		- In "Basics settings" section, set adequate Memory and Timeout values. Memory of 1664 MB and Timeout value of 10 minutes should be plenty.
 	- For the `wzdx_ingest_to_socrata` function:
 		- In "Function code" section, select "Upload a .zip file" and upload the `wzdx_ingest_to_socrata.zip` file as your "Function Package."
@@ -95,6 +97,32 @@ The lambdas to be invoked expect the following information in the payload:
   * `bucket`: the name of the S3 bucket that contains the feed snapshot to be parsed
   * `key`: the prefix of the S3 bucket path that contains the feed snapshot to be parsed
 
+### Deployment of S3 Explorer site
+
+1. Upload `index.html` to the root folder of your S3 bucket.
+2. In the AWS Console for your S3 bucket, go to "Permissions" > "CORS configuration" and copy and paste the following block of text and replace `{YOUR_WORKZONE_BUCKET_NAME}` with your bucket name.
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+<CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedOrigin>http://{YOUR_WORKZONE_BUCKET_NAME}.s3.amazonaws.com</AllowedOrigin>
+    <AllowedOrigin>https://s3.amazonaws.com</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <MaxAgeSeconds>3000</MaxAgeSeconds>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-amz-meta-custom-header</ExposeHeader>
+    <AllowedHeader>Authorization</AllowedHeader>
+    <AllowedHeader>*</AllowedHeader>
+</CORSRule>
+</CORSConfiguration>
+```
+
+3. Save. Also make sure that your bucket policy allows for List/Get actions on resource `arn:aws:s3:::{YOUR_WORKZONE_BUCKET_NAME}/*` and `arn:aws:s3:::{YOUR_WORKZONE_BUCKET_NAME}`.
+
+
 ## Built With
 
 * [Python 3.6+](https://www.python.org/download/releases/3.0)
@@ -121,3 +149,19 @@ This project is licensed under the Apache 2.0 License. - see the [LICENSE](LICEN
 ## Acknowledgments
 
 * Thank you to the Department of Transportation for funding to develop this project.
+
+## Code.gov Registration Info
+
+Agency: DOT
+
+Short Description: Code for the Work Zone Data Exchange feed ingestion pipeline.
+
+Status: Beta
+
+Tags: transportation, connected vehicles, intelligent transportation systems, python, ITS Sandbox, Socrata, work zone data exchange (WZDx), smart work zone
+
+Labor hours: 0
+
+Contact Name: Brian Brotsos
+
+Contact Phone: (202) 366-9013

@@ -1,0 +1,18 @@
+state,feedName,url
+arizona,mcdot,http://api.mcdot-its.com/WZDx/Activity/Get
+arizona,mcdot,https://api.mcdot-its.com/WZDx_v3.0/Activity/Get
+massachusetts,massdot,https://wzdx.massdot-swzm.com/massdot_wzdx_v2.0.geojson
+iowa,iowadot,https://cloud.iowadot.gov/Highway/OTO/wzdx.xml
+massachusetts,massdot__v3_1,https://wzdx.massdot-swzm.com/massdot_wzdx_v3.1.geojson
+texas,txdot,http://txdot-its-c2c.txdot.gov/wzdx/conversion
+utah,udot,https://udottraffic.utah.gov/wzdx/udot/v40/data
+florida,fldot,https://us-datacloud.one.network/fdot/feed.json?app_key=c4090b04-26de-c9ee-873b2bd9a38c
+iowa,idot,https://iowa-atms.cloud-q-free.com/api/rest/dataprism/wzdx/wzdxfeed
+colorado,cdot,https://data.cotrip.org/api/v1/wzdx?apiKey=JG1Q1VW-3G343QM-JB707W3-SPY9T26
+oklahoma,odot,https://oktraffic.org/api/Geojsons/workzones?&access_token=feOPynfHRJ5sdx8tf3IN5yOsGz89TAUuzHsN3V0jo1Fg41LcpoLhIRltaTPmDngD
+north carolina,ncdot,https://us-datacloud.one.network/wzdx-north-carolina.json?app_key=db73336d-85c4-7d0b-258b71e36573
+nps,nps,https://www.nps.gov/external-resources/nps-wzdx.geojson
+minnesota,mndot,https://mn.carsprogram.org/carsapi_v1/api/wzdx
+texas,txdot_v4,http://txdot-its-c2c.txdot.gov/WZDx/4.1
+california,mtc,https://api.511.org/traffic/wzdx?api_key=cf9521ad-a68b-4642-bb9f-3c6f5bf3313d
+maryland,mdot,https://filter.ritis.org/wzdx_v4.1/mdot.geojson

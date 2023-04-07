@@ -119,6 +119,35 @@ class S3Helper(aws_helper):
             data = obj['Body']
         return data
 
+    def newline_json_rec_generator(self, data_stream):
+        """
+        Receives a data stream that is assumed to be in the newline JSON format
+        (one stringified json per line), reads and returns these records as
+        dictionary objects one at a time.
+
+        Parameters:
+            data_stream: "Readable" file datastream objects
+
+        Returns:
+            Iterable array of dictionary objects
+        """
+        line = data_stream.readline()
+        while line:
+            if type(line) == bytes:
+                line_stripped = line.strip(b'\n')
+            else:
+                line_stripped = line.strip('\n')
+
+            try:
+                if line_stripped:
+                    yield json.loads(line_stripped)
+            except:
+                self.print_func(traceback.format_exc())
+                self.print_func('Invalid json line. Skipping: {}'.format(line))
+                self.err_lines.append(line)
+                raise
+            line = data_stream.readline()
+
     def write_recs(self, recs, bucket, key):
         """
         Writes the array of dictionary objects as newline json text file to the

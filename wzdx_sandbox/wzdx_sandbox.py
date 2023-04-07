@@ -10,6 +10,7 @@ import logging
 import requests
 import xmltodict
 import traceback
+import csv
 
 from wzdx_sandbox.s3_helper import S3Helper
 
@@ -79,10 +80,21 @@ class WorkZoneRawSandbox(ITSSandbox):
         self.feed = feed
         self.lambda_to_trigger = lambda_to_trigger
         self.socrata_lambda_to_trigger = socrata_lambda_to_trigger
-
+        self.url_dict = {}
+        self.read_urls()
         # variables necessary to update last ingest time to Socrata WZDx feed registry
         # this is currently done in the previous lambda function "wzdx_trigger_ingest".
         # leaving the block below in case we move the step to this function
+
+    def read_urls(self):
+        header = True
+        with open('WZDx_URLs.csv') as in_f:
+            for line in in_f:
+                if header:
+                    header = False
+                    continue
+                row = line.strip('\n').split(',')
+                self.url_dict[(row[0],row[1])] = row[2]
 
     def ingest(self):
         """
@@ -99,16 +111,23 @@ class WorkZoneRawSandbox(ITSSandbox):
             datetime_retrieved=datetime_retrieved
         )
 
+        url_to_request = self.url_dict[(self.feed['state'],self.feed['feedname'])]
         try:
-            r = requests.get(self.feed['url']['url'])
-            data_to_write = r.content
-            self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
-            self.print_func('Raw data ingested from {} to {} at {} UTC'.format(self.feed['url']['url'], prefix+fp, datetime_retrieved))
+            r = requests.get(url_to_request)
+            if r.status_code == 200:
+                data_to_write = r.content
+                self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
+                self.print_func('Raw data ingested from {} to {} at {} UTC'.format(url_to_request, prefix+fp, datetime_retrieved))
+            else:
+                self.print_func('Received status code {} from {} feed.'.format(r.status_code,self.feed['feedname']))
+                self.print_func('Skip triggering ingestion of {} to sandbox.'.format(self.feed['feedname']))
+                self.print_func('Skip triggering ingestion of {} to Socrata.'.format(self.feed['feedname']))
+                return
         except BaseException as e:
             data_to_write = f'The feed at {datetime_retrieved.isoformat()}.'.encode('utf-8')
             fp += '__FEED_NOT_RETRIEVED'
             self.s3helper.write_bytes(data_to_write, self.bucket, key=prefix+fp)
-            self.print_func('We could not ingest data from {} at {} UTC'.format(self.feed['url']['url'], datetime_retrieved))
+            self.print_func('We could not ingest data from {} at {} UTC'.format(url_to_request, datetime_retrieved))
             raise e
 
         # trigger semi-parse ingest
@@ -185,6 +204,7 @@ class WorkZoneSandbox(ITSSandbox):
             data: Raw string data from feed archive sandbox. Could be stringified
                 JSON object or XML.
         """
+        self.print_func('Ingesting data from {} feed.'.format(self.feed['feedname']))
         data = self.parse_to_json(data)
         new_statuses, generate_out_rec, prefix, field_name_tuple = self.generate_fp_status_dict(data)
 
@@ -248,10 +268,20 @@ class WorkZoneSandbox(ITSSandbox):
             update_time_field_name = 'feed_update_date'
             feed_version = data[header_field_name]['version']
             generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
-        else:
+        elif '3' in self.feed['version']:
             # spec version 3, 3.1
             activity_list_field_name = 'features'
             header_field_name = 'road_event_feed_info'
+            update_time_field_name = 'update_date'
+            feed_version = data[header_field_name]['version']
+            generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
+        else:
+            #spec version 4, 4.1
+            activity_list_field_name = 'features'
+            if 'road_event_feed_info' in data:
+                header_field_name = 'road_event_feed_info'
+            else:
+                header_field_name = 'feed_info'
             update_time_field_name = 'update_date'
             feed_version = data[header_field_name]['version']
             generate_out_rec = lambda activity: {header_field_name: data[header_field_name], activity_list_field_name: [activity], 'type': data['type']}
@@ -317,7 +347,7 @@ class WorkZoneSandbox(ITSSandbox):
         Method to check 1) if the current status is retrieved less than one day
         ago compared to the status prior to the previous status, and 2) if the
         current status matches the previous status for all fields except for
-        the fields ignored (timestampEventUpdate). Will return false (no overwrite)
+        the fields ignored (update_date). Will return false (no overwrite)
         if either condition is false.
 
         Parameters:
@@ -333,7 +363,7 @@ class WorkZoneSandbox(ITSSandbox):
             Boolean value showing whether or not the current status should overwrite
             the previous status.
         """
-        ignore_keys = ['timestampEventUpdate']
+        ignore_keys = ['update_date']
         # consider status as new if last record was at least one day ago
         header_field_name, update_time_field_name, activity_list_field_name = field_name_tuple
         time_diff = dateutil.parser.parse(cur_status[header_field_name][update_time_field_name]) - dateutil.parser.parse(prev_prev_status[header_field_name][update_time_field_name])
