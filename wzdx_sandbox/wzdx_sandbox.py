@@ -131,20 +131,17 @@ class WorkZoneRawSandbox(ITSSandbox):
             raise e
 
         # trigger semi-parse ingest
-        if self.feed['pipedtosandbox'] == True:
-            self.print_func('Trigger {} for {}'.format(self.lambda_to_trigger, self.feed['feedname']))
-            lambda_client = self.s3helper.session.client('lambda')
-            data_to_send = {'feed': self.feed, 'bucket': self.bucket, 'key': prefix+fp}
-            response = lambda_client.invoke(
-                FunctionName=self.lambda_to_trigger,
-                InvocationType='Event',
-                LogType='Tail',
-                ClientContext='',
-                Payload=json.dumps(data_to_send).encode('utf-8')
-            )
-            self.print_func(response)
-        else:
-            self.print_func('Skip triggering ingestion of {} to sandbox.'.format(self.feed['feedname']))
+        self.print_func('Trigger {} for {}'.format(self.lambda_to_trigger, self.feed['feedname']))
+        lambda_client = self.s3helper.session.client('lambda')
+        data_to_send = {'feed': self.feed, 'bucket': self.bucket, 'key': prefix+fp}
+        response = lambda_client.invoke(
+            FunctionName=self.lambda_to_trigger,
+            InvocationType='Event',
+            LogType='Tail',
+            ClientContext='',
+            Payload=json.dumps(data_to_send).encode('utf-8')
+        )
+        self.print_func(response)
 
         # trigger ingest to socrata
         if self.feed['pipedtosocrata'] == True:

@@ -30,7 +30,11 @@ def lambda_handler(event=None, context=None):
                         lambda_to_trigger=LAMBDA_TO_TRIGGER,
                         socrata_lambda_to_trigger=SOCRATA_LAMBDA_TO_TRIGGER,
                         logger=logger)
-        wzdx_sandbox.ingest()
+        if event['feed']['pipedtosandbox'] == True:
+            print("Ingesting {}".format(event['feed']['feedname']))
+            wzdx_sandbox.ingest()
+        else:
+            print('Skip triggering ingestion of {} to sandbox.'.format(event['feed']['feedname']))
     except:
         print(traceback.format_exc())
         print(event)
