@@ -7,6 +7,7 @@ import botocore.exceptions
 import json
 import logging
 import traceback
+import inspect
 
 
 class aws_helper(object):
@@ -161,7 +162,11 @@ class S3Helper(aws_helper):
         Returns:
             None
         """
-        outbytes = "\n".join([json.dumps(i) for i in recs if i]).encode('utf-8')
+        json_list = []
+        for i in recs:
+            if i is not None and not inspect.isfunction(i):
+                json_list.append(json.dumps(i))
+        outbytes = "\n".join(json_list).encode('utf-8')
         self.client.put_object(Bucket=bucket, Key=key, Body=outbytes)
 
     def write_bytes(self, outbytes, bucket, key):

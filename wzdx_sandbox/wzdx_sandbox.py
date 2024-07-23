@@ -11,6 +11,7 @@ import requests
 import xmltodict
 import traceback
 import csv
+import multiprocessing
 
 from wzdx_sandbox.s3_helper import S3Helper
 
@@ -19,7 +20,7 @@ logger.setLevel(logging.INFO)  # necessary to make sure aws is logging
 
 
 class ITSSandbox(object):
-    """
+    """ 
     Base class for working with ITS Sandbox.
 
     """
@@ -192,6 +193,16 @@ class WorkZoneSandbox(ITSSandbox):
         self.n_new_fps = 0
         self.n_skipped = 0
 
+    def process_records(self, key, data, status, name, statuses):
+        out_rec = data(status)
+        if self.s3helper.path_exists(self.bucket, key):
+            out_recs = self.combine_with_existing_recs(key, data, name)
+        else:
+            out_recs = [out_rec]
+            self.n_new_fps += 1
+        if out_recs is not None:
+            self.s3helper.write_recs(out_recs, self.bucket, key)
+
     def ingest(self, data):
         """
         Method to ingest and parse the raw feed from the ITS Work Zone Raw Sandbox
@@ -205,17 +216,27 @@ class WorkZoneSandbox(ITSSandbox):
         data = self.parse_to_json(data)
         new_statuses, generate_out_rec, prefix, field_name_tuple = self.generate_fp_status_dict(data)
 
+        num_threads = 3
+        processes = {}
+
+        count = 0
         for fp, current_status in new_statuses.items():
             key = prefix+fp
-            out_rec = generate_out_rec(current_status)
-            if self.s3helper.path_exists(self.bucket, key):
-                out_recs = self.combine_with_existing_recs(key, out_rec, field_name_tuple)
-                if out_recs is None:
-                    continue
+            if count < num_threads:
+                processes[count] = multiprocessing.Process(target=self.process_records, args=(
+                key, generate_out_rec, current_status, field_name_tuple, new_statuses,))
+                processes[count].start()
             else:
-                out_recs = [out_rec]
-                self.n_new_fps += 1
-            self.s3helper.write_recs(out_recs, self.bucket, key)
+                for i in range(num_threads):
+                    processes[i].join()
+                count = 0
+                processes[count] = multiprocessing.Process(target=self.process_records, args=(
+                key, generate_out_rec, current_status, field_name_tuple, new_statuses,))
+                processes[count].start()
+            count += 1
+
+        for i in range(len(processes)):
+            processes[i].join()
 
         self.print_func('{} status found in {} feed: {} skipped, {} overwrites, {} updates, {} new files'.format(
         len(new_statuses), self.feed['feedname'], self.n_skipped, self.n_overwrite, self.n_new_status, self.n_new_fps))
@@ -319,7 +340,7 @@ class WorkZoneSandbox(ITSSandbox):
         # if not first status for the workzone for the month
         datastream = self.s3helper.get_data_stream(self.bucket, key)
         recs = [json.loads(rec) for rec in datastream.iter_lines()]
-        if out_rec == recs[-1]:
+        if [out_rec] == recs[-1]:
             # skip if completely the same as previous record
             self.print_func('Skipped')
             self.n_skipped += 1
@@ -331,7 +352,7 @@ class WorkZoneSandbox(ITSSandbox):
             self.print_func('Only 1 rec and not the same')
         else:
             # if more than one record, compare current record with previous and previous previous record
-            if self.cmp_status(out_rec, recs[-1], recs[-2], field_name_tuple):
+            if self.cmp_status([out_rec], recs[-1], recs[-2], field_name_tuple):
                 out_recs = recs[:-1] + [out_rec]
                 self.n_overwrite += 1
             else:
